@@ -1,8 +1,8 @@
-import type { User } from '../types';
+import type { Person } from '../types';
 
 interface Props {
   /** People to choose from (everyone except the current user). */
-  people: User[];
+  people: Person[];
   selected: string[];
   onChange: (ids: string[]) => void;
 }

@@ -4,7 +4,17 @@ import cookieParser from 'cookie-parser';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import { ZodError } from 'zod';
-import { authRouter, publicUser, requireAuth } from './auth.js';
+import { adminRouter } from './admin.js';
+import { AuditLog } from './audit.js';
+import {
+  accountRouter,
+  authRouter,
+  requireAdmin,
+  requireAuth,
+  sameOriginOnly,
+  Sessions,
+  type LoginLimits,
+} from './auth.js';
 import type { AppConfig } from './config.js';
 import { todayIn } from './dates.js';
 import type { Db } from './db.js';
@@ -20,9 +30,11 @@ export interface AppDeps {
   scheduler: RolloverScheduler;
   /** Directory with the built client. Served with an SPA fallback when present. */
   clientDir?: string;
+  /** Override sign-in throttling (tests sign in far more often than people do). */
+  loginLimits?: LoginLimits;
 }
 
-export function createApp({ db, config, scheduler, clientDir }: AppDeps) {
+export function createApp({ db, config, scheduler, clientDir, loginLimits }: AppDeps) {
   const app = express();
   app.set('trust proxy', 1); // Railway terminates TLS at its proxy
   app.disable('x-powered-by');
@@ -35,12 +47,25 @@ export function createApp({ db, config, scheduler, clientDir }: AppDeps) {
     res.json({ ok: true });
   });
 
+  app.use('/api', sameOriginOnly);
+  app.use('/api', (_req, res, next) => {
+    // API responses are per-user; never let a shared cache keep them.
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+
   const users = new UserRepo(db);
-  app.use('/api/auth', authRouter(config, users));
-  app.use('/api', requireAuth(config, users));
+  const audit = new AuditLog(db);
+  const deps = { config, users, audit, limits: loginLimits };
+  const sessions = new Sessions(deps);
+  app.use('/api/auth', authRouter(deps, sessions));
+  app.use('/api', requireAuth(sessions));
+  app.use('/api/account', accountRouter(deps, sessions));
+  app.use('/api/admin', requireAdmin, adminRouter(users, audit, sessions));
   // Active users, for picking who to share a task with.
   app.get('/api/users', async (_req, res) => {
-    res.json({ users: (await users.list()).map(publicUser) });
+    // Just what's needed to pick people; who the admin is stays private.
+    res.json({ users: (await users.list()).map(({ id, username, displayName }) => ({ id, username, displayName })) });
   });
   app.get('/api/meta', (_req, res) => {
     res.json({ today: todayIn(config.timezone), timezone: config.timezone });

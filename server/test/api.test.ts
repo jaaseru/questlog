@@ -24,7 +24,7 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
   const db = createPool(config.databaseUrl);
   const users = new UserRepo(db);
   const scheduler = createRolloverScheduler(db, config.timezone);
-  const app = createApp({ db, config, scheduler });
+  const app = createApp({ db, config, scheduler, loginLimits: { attemptsPerIp: 10_000, failuresPerUsername: 10_000 } });
   const today = todayIn(config.timezone);
   const PASSWORD = 'correct horse battery';
 
@@ -54,7 +54,12 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
 
   beforeEach(async () => {
     await db.query('TRUNCATE tasks CASCADE');
-    await db.query('UPDATE users SET disabled = false');
+    // Tests that disable Carol end her session; bring her back for the next test.
+    const current = await users.get(carol.id); // absent once the upgrade tests rebuild the schema
+    if (current && (current.disabled || (await as.carol.get('/api/auth/me')).body.signedIn !== true)) {
+      await db.query('UPDATE users SET disabled = false');
+      await as.carol.post('/api/auth/login').send({ username: 'carol', password: PASSWORD }).expect(200);
+    }
   });
 
   afterAll(async () => {
@@ -77,19 +82,22 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
       const agent = request.agent(app);
       await agent.post('/api/auth/login').send({ username: ' Alice ', password: PASSWORD }).expect(200);
       const { body } = await agent.get('/api/auth/me').expect(200);
-      expect(body).toEqual({ signedIn: true, user: { id: alice.id, username: 'alice', displayName: 'Alice' } });
+      expect(body).toEqual({ signedIn: true, user: { id: alice.id, username: 'alice', displayName: 'Alice', isAdmin: true } });
     });
 
     it('signs out disabled users immediately and refuses their login', async () => {
-      await users.setDisabled('carol', true);
+      await users.setDisabled(carol.id, true);
       await as.carol.get('/api/tasks/backlog').expect(401);
       await request(app).post('/api/auth/login').send({ username: 'carol', password: PASSWORD }).expect(401);
-      await users.setDisabled('carol', false);
+      await users.setDisabled(carol.id, false);
+      // Re-enabling doesn't revive old sessions: Carol signs in again.
+      await as.carol.get('/api/tasks/backlog').expect(401);
+      await as.carol.post('/api/auth/login').send({ username: 'carol', password: PASSWORD }).expect(200);
       await as.carol.get('/api/tasks/backlog').expect(200);
     });
 
     it('lists active users for sharing', async () => {
-      await users.setDisabled('carol', true);
+      await users.setDisabled(carol.id, true);
       const { body } = await as.alice.get('/api/users').expect(200);
       expect(body.users.map((u: { username: string }) => u.username)).toEqual(['alice', 'bob']);
       expect(body.users[0]).not.toHaveProperty('passwordHash');
@@ -248,7 +256,7 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
         .post('/api/tasks')
         .send({ title: 'y', memberIds: ['00000000-0000-4000-8000-000000000000'] })
         .expect(400);
-      await users.setDisabled('carol', true);
+      await users.setDisabled(carol.id, true);
       await as.alice.patch(`/api/tasks/${task.id}`).send({ memberIds: [alice.id, carol.id] }).expect(400);
       const { body: unchanged } = await as.alice.get(`/api/tasks/${task.id}`).expect(200);
       expect(unchanged.memberIds).toEqual([alice.id]);

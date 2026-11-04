@@ -5,6 +5,26 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  isAdmin: boolean;
+}
+
+/** Someone you can share with (from /api/users). */
+export type Person = Omit<User, 'isAdmin'>;
+
+export interface AdminUser extends User {
+  disabled: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  action: string;
+  actor: string | null;
+  target: string | null;
+  ip: string | null;
+  detail: { username?: string; reason?: string; via?: string; from?: string; to?: string };
 }
 
 export interface Task {

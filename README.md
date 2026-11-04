@@ -91,7 +91,9 @@ On your phone, open the site and use **Add to Home Screen** to get an app-like, 
 
 ## Managing users
 
-**Step-by-step guide: [docs/managing-users.md](docs/managing-users.md)** (Railway CLI setup, every command, troubleshooting).
+**Step-by-step guide: [docs/managing-users.md](docs/managing-users.md)** (the Admin page, the command line, troubleshooting).
+
+Day to day, use the **Admin page** in the app (only the admin sees it). The command line below is the backup.
 
 Accounts live in the `users` table. Passwords are hashed with scrypt, so add and change them with the bundled tool rather than by editing the table.
 
@@ -107,15 +109,26 @@ It prompts for the password without echoing it (minimum 8 characters). All comma
 | ----------------------------------------- | ------------------------------------------------------------ |
 | `list`                                    | Shows every account and whether it's active                  |
 | `add <username> [--name "Display Name"]`  | Creates an account                                           |
-| `passwd <username>`                       | Sets a new password                                          |
+| `passwd <username>`                       | Sets a new password and signs them out everywhere            |
 | `rename <username> "Display Name"`        | Changes the name others see                                  |
 | `disable <username>` / `enable <username>`| Blocks or restores sign-in; a disabled user is signed out at once and their tasks are kept |
+| `signout <username>`                      | Ends all of their sessions                                   |
+| `grant-admin <username>` / `revoke-admin <username>` | Gives or removes access to the Admin page        |
 
 Usernames are 2–32 characters: lowercase letters, digits, `.`, `_` or `-`. For scripts, pass the password in `QUESTLOG_PASSWORD` instead of typing it.
 
 ### Upgrading from the single-password version
 
 If the database has no users yet and `APP_PASSWORD` is set, the server creates the first account on start-up: username `ADMIN_USERNAME` (default `admin`) with `APP_PASSWORD` as its password. That account takes over every existing task. After that, `APP_PASSWORD` is ignored and can be removed. Existing sessions end, so everyone signs in again with a username.
+
+## Security
+
+- **Passwords** are hashed with scrypt (salted, 32 MiB cost). Sign-ins for unknown usernames take as long as for real ones, so usernames can't be probed by timing.
+- **Sessions** are signed, httpOnly, SameSite=Lax cookies (Secure in production) valid for 30 days. Each carries the account's session version, so a password change, reset, disable or "sign out everywhere" ends existing sessions immediately.
+- **Sign-in throttling**: 20 attempts per network address and 10 failures per username per 15 minutes; failed and blocked attempts are logged. Throttling is in memory and resets when the app restarts.
+- **Access control**: every task query is scoped to the signed-in user's memberships. The admin API requires the admin flag, which can only be granted from the command line.
+- **Requests**: state-changing API calls from another site's origin are rejected; API responses are `Cache-Control: no-store`; security headers (CSP, HSTS, etc.) via helmet; request bodies capped at 100 kB.
+- **Audit log**: sign-ins, failures and account changes are stored in `audit_log` and shown on the Admin page.
 
 ## How roll-over works
 

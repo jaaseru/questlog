@@ -1,4 +1,4 @@
-import type { Task, TaskInput, User } from './types';
+import type { AdminUser, AuditEntry, Person, Task, TaskInput, User } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -30,7 +30,22 @@ export const api = {
   me: () => request<{ signedIn: boolean; user?: User }>('/auth/me'),
   login: (username: string, password: string) =>
     request<{ user: User }>('/auth/login', json('POST', { username, password })),
-  users: () => request<{ users: User[] }>('/users'),
+  users: () => request<{ users: Person[] }>('/users'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: true }>('/account/password', json('POST', { currentPassword, newPassword })),
+  signOutOthers: () => request<{ ok: true }>('/account/signout-others', json('POST')),
+
+  admin: {
+    users: () => request<{ users: AdminUser[] }>('/admin/users'),
+    create: (input: { username: string; displayName?: string; password: string }) =>
+      request<AdminUser>('/admin/users', json('POST', input)),
+    update: (id: string, patch: { displayName?: string; disabled?: boolean }) =>
+      request<AdminUser>(`/admin/users/${id}`, json('PATCH', patch)),
+    resetPassword: (id: string, password: string) =>
+      request<{ ok: true }>(`/admin/users/${id}/password`, json('POST', { password })),
+    signOut: (id: string) => request<{ ok: true }>(`/admin/users/${id}/signout`, json('POST')),
+    audit: (limit = 100) => request<{ entries: AuditEntry[] }>(`/admin/audit?limit=${limit}`),
+  },
   logout: () => request<{ ok: true }>('/auth/logout', json('POST')),
   meta: () => request<{ today: string; timezone: string }>('/meta'),
 

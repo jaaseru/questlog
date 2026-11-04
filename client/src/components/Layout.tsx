@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
 import { useMe } from '../queries';
 import { initials } from './SharePicker';
-import { BacklogIcon, CalendarIcon, HistoryIcon, LogoutIcon, TodayIcon } from './icons';
+import { BacklogIcon, CalendarIcon, HistoryIcon, LogoutIcon, ShieldIcon, TodayIcon } from './icons';
 
 const links = [
   { to: '/', label: 'Today', icon: <TodayIcon />, end: false },
@@ -26,12 +26,12 @@ export function Layout() {
     <div className="shell">
       <header className="topbar">
         <span className="brand">Questlog</span>
-        <span className="topbar__user">
+        <Link to="/account" className="topbar__user" aria-label={`Account: ${me.displayName}`}>
           <span className="avatar" aria-hidden>
             {initials(me.displayName)}
           </span>
           {me.displayName}
-        </span>
+        </Link>
         <button className="icon-btn" onClick={signOut} aria-label="Sign out">
           <LogoutIcon />
         </button>
@@ -53,12 +53,18 @@ export function Layout() {
           </NavLink>
         ))}
         <div className="nav__footer">
-          <span className="nav__user">
+          {me.isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) => `nav__link${isActive ? ' is-active' : ''}`}>
+              <ShieldIcon />
+              <span>Admin</span>
+            </NavLink>
+          )}
+          <NavLink to="/account" className={({ isActive }) => `nav__link nav__user${isActive ? ' is-active' : ''}`}>
             <span className="avatar" aria-hidden>
               {initials(me.displayName)}
             </span>
-            {me.displayName}
-          </span>
+            <span>{me.displayName}</span>
+          </NavLink>
           <button className="nav__link" onClick={signOut}>
             <LogoutIcon />
             <span>Sign out</span>

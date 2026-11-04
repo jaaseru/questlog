@@ -56,6 +56,12 @@ export const PeopleIcon = () => (
     <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" />
   </svg>
 );
+export const ShieldIcon = () => (
+  <svg {...base}>
+    <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z" />
+    <path d="M9 12l2 2 4-4" />
+  </svg>
+);
 export const CheckIcon = () => (
   <svg {...base} width={14} height={14} strokeWidth={3}>
     <path d="M5 12l5 5 9-10" />

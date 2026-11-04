@@ -20,7 +20,9 @@ describe.skipIf(!databaseUrl)('UserRepo (needs TEST_DATABASE_URL)', () => {
 
   it('normalizes usernames and defaults the display name', async () => {
     const user = await users.create({ username: '  Julian ', password: 'long enough' });
-    expect(user).toMatchObject({ username: 'julian', displayName: 'julian', disabled: false });
+    expect(user).toMatchObject({ username: 'julian', displayName: 'julian', disabled: false, isAdmin: true });
+    const second = await users.create({ username: 'sam', password: 'long enough' });
+    expect(second.isAdmin).toBe(false);
     expect(await users.authenticate('JULIAN', 'long enough')).toMatchObject({ id: user.id });
   });
 
@@ -28,22 +30,26 @@ describe.skipIf(!databaseUrl)('UserRepo (needs TEST_DATABASE_URL)', () => {
     await expect(users.create({ username: 'a', password: 'long enough' })).rejects.toThrow(UserError);
     await expect(users.create({ username: 'has space', password: 'long enough' })).rejects.toThrow(UserError);
     await expect(users.create({ username: 'sam', password: 'short' })).rejects.toThrow(/at least 8/);
+    await expect(users.create({ username: 'sam', password: 'x'.repeat(201) })).rejects.toThrow(/at most 200/);
     await users.create({ username: 'sam', password: 'long enough' });
     await expect(users.create({ username: 'SAM', password: 'long enough' })).rejects.toThrow(/already exists/);
   });
 
   it('changes passwords, display names and disabled state', async () => {
-    await users.create({ username: 'sam', password: 'first password' });
-    await users.setPassword('sam', 'second password');
+    const sam = await users.create({ username: 'sam', password: 'first password' });
+    expect(sam.sessionVersion).toBe(1);
+    expect(await users.setPassword(sam.id, 'second password')).toBe(2);
     expect(await users.authenticate('sam', 'first password')).toBeNull();
     expect(await users.authenticate('sam', 'second password')).not.toBeNull();
 
-    await users.rename('sam', 'Sam S.');
+    await users.rename(sam.id, 'Sam S.');
     expect((await users.findByUsername('sam'))!.displayName).toBe('Sam S.');
 
-    await users.setDisabled('sam', true);
+    await users.setDisabled(sam.id, true);
     expect(await users.authenticate('sam', 'second password')).toBeNull();
-    await expect(users.setDisabled('nobody', true)).rejects.toThrow(/No user/);
+    expect((await users.get(sam.id))!.sessionVersion).toBe(3);
+    await expect(users.require('nobody')).rejects.toThrow(/No user named "nobody"/);
+    await expect(users.setDisabled('00000000-0000-4000-8000-000000000000', true)).rejects.toThrow(UserError);
   });
 
   it('only gives orphaned tasks to the first user', async () => {
