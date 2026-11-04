@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
+import { useMe } from '../queries';
+import { initials } from './SharePicker';
 import { BacklogIcon, CalendarIcon, HistoryIcon, LogoutIcon, TodayIcon } from './icons';
 
 const links = [
@@ -13,6 +15,7 @@ const links = [
 export function Layout() {
   const qc = useQueryClient();
   const { pathname } = useLocation();
+  const me = useMe();
   const signOut = async () => {
     await api.logout();
     qc.clear();
@@ -23,6 +26,12 @@ export function Layout() {
     <div className="shell">
       <header className="topbar">
         <span className="brand">Questlog</span>
+        <span className="topbar__user">
+          <span className="avatar" aria-hidden>
+            {initials(me.displayName)}
+          </span>
+          {me.displayName}
+        </span>
         <button className="icon-btn" onClick={signOut} aria-label="Sign out">
           <LogoutIcon />
         </button>
@@ -43,10 +52,18 @@ export function Layout() {
             <span>{l.label}</span>
           </NavLink>
         ))}
-        <button className="nav__link nav__signout" onClick={signOut}>
-          <LogoutIcon />
-          <span>Sign out</span>
-        </button>
+        <div className="nav__footer">
+          <span className="nav__user">
+            <span className="avatar" aria-hidden>
+              {initials(me.displayName)}
+            </span>
+            {me.displayName}
+          </span>
+          <button className="nav__link" onClick={signOut}>
+            <LogoutIcon />
+            <span>Sign out</span>
+          </button>
+        </div>
       </nav>
 
       <main className="main">

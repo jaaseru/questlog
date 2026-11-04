@@ -225,7 +225,7 @@ textarea {
 }
 
 .nav .nav__brand,
-.nav .nav__signout {
+.nav .nav__footer {
   display: none;
 }
 
@@ -286,8 +286,10 @@ textarea {
     font-size: 1.2rem;
   }
 
-  .nav .nav__signout {
+  .nav .nav__footer {
     display: flex;
+    flex-direction: column;
+    gap: 4px;
     margin-top: auto;
   }
 
@@ -914,4 +916,105 @@ textarea {
     font-size: 0.7rem;
     color: var(--muted);
   }
+}
+
+/* ---------- People & sharing ---------- */
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.topbar__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.nav__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.share-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.person-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.person-chip.is-on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.quick-add .quick-add__share {
+  position: relative;
+  color: var(--muted);
+}
+
+.quick-add .quick-add__share.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.quick-add__count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.7rem;
+  line-height: 18px;
+}
+
+.quick-add__people {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
+.chip--shared {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }

@@ -4,13 +4,15 @@ import cookieParser from 'cookie-parser';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import { ZodError } from 'zod';
-import { authRouter, requireAuth } from './auth.js';
+import { authRouter, publicUser, requireAuth } from './auth.js';
 import type { AppConfig } from './config.js';
 import { todayIn } from './dates.js';
 import type { Db } from './db.js';
+import { HttpError } from './errors.js';
 import type { RolloverScheduler } from './rollover.js';
 import { TaskRepo } from './tasks/repo.js';
-import { HttpError, tasksRouter } from './tasks/routes.js';
+import { tasksRouter } from './tasks/routes.js';
+import { UserRepo } from './users.js';
 
 export interface AppDeps {
   db: Db;
@@ -33,8 +35,13 @@ export function createApp({ db, config, scheduler, clientDir }: AppDeps) {
     res.json({ ok: true });
   });
 
-  app.use('/api/auth', authRouter(config));
-  app.use('/api', requireAuth(config));
+  const users = new UserRepo(db);
+  app.use('/api/auth', authRouter(config, users));
+  app.use('/api', requireAuth(config, users));
+  // Active users, for picking who to share a task with.
+  app.get('/api/users', async (_req, res) => {
+    res.json({ users: (await users.list()).map(publicUser) });
+  });
   app.get('/api/meta', (_req, res) => {
     res.json({ today: todayIn(config.timezone), timezone: config.timezone });
   });

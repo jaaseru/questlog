@@ -6,6 +6,7 @@ import { addDays, todayIn } from '../src/dates.js';
 import { createPool } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { createRolloverScheduler, rolloverTasks } from '../src/rollover.js';
+import { bootstrapFirstUser, UserRepo, type User } from '../src/users.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 
@@ -14,25 +15,46 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
     port: 0,
     databaseUrl: databaseUrl!,
     databaseSsl: false,
-    appPassword: 'correct horse battery staple',
+    appPassword: '',
+    adminUsername: 'admin',
     sessionSecret: 's'.repeat(32),
     timezone: 'Europe/Oslo',
     isProduction: false,
   };
   const db = createPool(config.databaseUrl);
+  const users = new UserRepo(db);
   const scheduler = createRolloverScheduler(db, config.timezone);
   const app = createApp({ db, config, scheduler });
-  const agent = request.agent(app);
   const today = todayIn(config.timezone);
+  const PASSWORD = 'correct horse battery';
 
-  beforeAll(async () => {
+  let alice: User, bob: User, carol: User;
+  const as = {
+    alice: request.agent(app),
+    bob: request.agent(app),
+    carol: request.agent(app),
+  };
+
+  const ids = (list: { id: string }[]) => list.map((t) => t.id);
+
+  async function resetSchema() {
     await db.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
     await migrate(db);
-    await agent.post('/api/auth/login').send({ password: config.appPassword }).expect(200);
+  }
+
+  beforeAll(async () => {
+    await resetSchema();
+    alice = await users.create({ username: 'alice', displayName: 'Alice', password: PASSWORD });
+    bob = await users.create({ username: 'bob', displayName: 'Bob', password: PASSWORD });
+    carol = await users.create({ username: 'carol', displayName: 'Carol', password: PASSWORD });
+    for (const name of ['alice', 'bob', 'carol'] as const) {
+      await as[name].post('/api/auth/login').send({ username: name, password: PASSWORD }).expect(200);
+    }
   });
 
   beforeEach(async () => {
     await db.query('TRUNCATE tasks CASCADE');
+    await db.query('UPDATE users SET disabled = false');
   });
 
   afterAll(async () => {
@@ -45,85 +67,198 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
       await request(app).get('/api/auth/me').expect(200, { signedIn: false });
     });
 
-    it('rejects a wrong password', async () => {
-      await request(app).post('/api/auth/login').send({ password: 'nope' }).expect(401);
+    it('rejects wrong passwords and unknown users with the same message', async () => {
+      const wrong = await request(app).post('/api/auth/login').send({ username: 'alice', password: 'nope' }).expect(401);
+      const unknown = await request(app).post('/api/auth/login').send({ username: 'mallory', password: 'x' }).expect(401);
+      expect(wrong.body).toEqual(unknown.body);
     });
 
-    it('reports a signed-in session', async () => {
-      await agent.get('/api/auth/me').expect(200, { signedIn: true });
+    it('accepts usernames case-insensitively and reports the user', async () => {
+      const agent = request.agent(app);
+      await agent.post('/api/auth/login').send({ username: ' Alice ', password: PASSWORD }).expect(200);
+      const { body } = await agent.get('/api/auth/me').expect(200);
+      expect(body).toEqual({ signedIn: true, user: { id: alice.id, username: 'alice', displayName: 'Alice' } });
+    });
+
+    it('signs out disabled users immediately and refuses their login', async () => {
+      await users.setDisabled('carol', true);
+      await as.carol.get('/api/tasks/backlog').expect(401);
+      await request(app).post('/api/auth/login').send({ username: 'carol', password: PASSWORD }).expect(401);
+      await users.setDisabled('carol', false);
+      await as.carol.get('/api/tasks/backlog').expect(200);
+    });
+
+    it('lists active users for sharing', async () => {
+      await users.setDisabled('carol', true);
+      const { body } = await as.alice.get('/api/users').expect(200);
+      expect(body.users.map((u: { username: string }) => u.username)).toEqual(['alice', 'bob']);
+      expect(body.users[0]).not.toHaveProperty('passwordHash');
     });
   });
 
   describe('tasks', () => {
-    it('creates a task on today by default and lists it on the day page', async () => {
-      const { body: task } = await agent.post('/api/tasks').send({ title: '  Write spec  ' }).expect(201);
-      expect(task).toMatchObject({ title: 'Write spec', status: 'open', priority: 'medium', scheduledDate: today });
-
-      const { body: day } = await agent.get(`/api/tasks/day/${today}`).expect(200);
-      expect(day.open.map((t: { id: string }) => t.id)).toEqual([task.id]);
-      expect(day.done).toEqual([]);
+    it('creates a task on today by default, owned by the creator', async () => {
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: '  Write spec  ' }).expect(201);
+      expect(task).toMatchObject({
+        title: 'Write spec',
+        status: 'open',
+        priority: 'medium',
+        scheduledDate: today,
+        createdBy: alice.id,
+        memberIds: [alice.id],
+      });
+      const { body: day } = await as.alice.get(`/api/tasks/day/${today}`).expect(200);
+      expect(ids(day.open)).toEqual([task.id]);
     });
 
     it('puts tasks with scheduledDate null in the backlog', async () => {
-      await agent.post('/api/tasks').send({ title: 'Someday', scheduledDate: null }).expect(201);
-      const { body } = await agent.get('/api/tasks/backlog').expect(200);
+      await as.alice.post('/api/tasks').send({ title: 'Someday', scheduledDate: null }).expect(201);
+      const { body } = await as.alice.get('/api/tasks/backlog').expect(200);
       expect(body.tasks.map((t: { title: string }) => t.title)).toEqual(['Someday']);
     });
 
     it('orders open tasks by priority', async () => {
       for (const [title, priority] of [['b', 'low'], ['c', 'urgent'], ['a', 'high']]) {
-        await agent.post('/api/tasks').send({ title, priority }).expect(201);
+        await as.alice.post('/api/tasks').send({ title, priority }).expect(201);
       }
-      const { body } = await agent.get(`/api/tasks/day/${today}`).expect(200);
+      const { body } = await as.alice.get(`/api/tasks/day/${today}`).expect(200);
       expect(body.open.map((t: { title: string }) => t.title)).toEqual(['c', 'a', 'b']);
     });
 
     it('refuses to schedule open tasks in the past', async () => {
-      await agent.post('/api/tasks').send({ title: 'x', scheduledDate: addDays(today, -1) }).expect(400);
-      const { body: task } = await agent.post('/api/tasks').send({ title: 'x' }).expect(201);
-      await agent.patch(`/api/tasks/${task.id}`).send({ scheduledDate: addDays(today, -1) }).expect(400);
+      await as.alice.post('/api/tasks').send({ title: 'x', scheduledDate: addDays(today, -1) }).expect(400);
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: 'x' }).expect(201);
+      await as.alice.patch(`/api/tasks/${task.id}`).send({ scheduledDate: addDays(today, -1) }).expect(400);
     });
 
     it('validates input', async () => {
-      await agent.post('/api/tasks').send({ title: '' }).expect(400);
-      await agent.post('/api/tasks').send({ title: 'x', priority: 'whenever' }).expect(400);
-      await agent.post('/api/tasks').send({ title: 'x', dueDate: '2026-02-30' }).expect(400);
-      await agent.get('/api/tasks/not-a-uuid').expect(404);
+      await as.alice.post('/api/tasks').send({ title: '' }).expect(400);
+      await as.alice.post('/api/tasks').send({ title: 'x', priority: 'whenever' }).expect(400);
+      await as.alice.post('/api/tasks').send({ title: 'x', dueDate: '2026-02-30' }).expect(400);
+      await as.alice.post('/api/tasks').send({ title: 'x', memberIds: ['not-a-uuid'] }).expect(400);
+      await as.alice.get('/api/tasks/not-a-uuid').expect(404);
     });
 
-    it('completes, reopens and records history', async () => {
-      const { body: task } = await agent.post('/api/tasks').send({ title: 'Ship it' }).expect(201);
-      const { body: done } = await agent.post(`/api/tasks/${task.id}/complete`).expect(200);
-      expect(done).toMatchObject({ status: 'done', completedOn: today });
+    it('completes, reopens and records history with the acting user', async () => {
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: 'Ship it' }).expect(201);
+      const { body: done } = await as.alice.post(`/api/tasks/${task.id}/complete`).expect(200);
+      expect(done).toMatchObject({ status: 'done', completedOn: today, completedBy: alice.id });
 
-      const { body: day } = await agent.get(`/api/tasks/day/${today}`).expect(200);
+      const { body: day } = await as.alice.get(`/api/tasks/day/${today}`).expect(200);
       expect(day.open).toEqual([]);
-      expect(day.done.map((t: { id: string }) => t.id)).toEqual([task.id]);
+      expect(ids(day.done)).toEqual([task.id]);
+      const { body: history } = await as.alice.get('/api/tasks/history').expect(200);
+      expect(ids(history.tasks)).toEqual([task.id]);
 
-      const { body: history } = await agent.get('/api/tasks/history').expect(200);
-      expect(history.tasks.map((t: { id: string }) => t.id)).toEqual([task.id]);
+      const { body: reopened } = await as.alice.post(`/api/tasks/${task.id}/reopen`).expect(200);
+      expect(reopened).toMatchObject({ status: 'open', completedOn: null, completedBy: null, scheduledDate: today });
 
-      const { body: reopened } = await agent.post(`/api/tasks/${task.id}/reopen`).expect(200);
-      expect(reopened).toMatchObject({ status: 'open', completedOn: null, scheduledDate: today });
-
-      const { rows } = await db.query('SELECT type FROM task_events WHERE task_id = $1 ORDER BY id', [task.id]);
-      expect(rows.map((r) => r.type)).toEqual(['created', 'completed', 'reopened']);
+      const { rows } = await db.query('SELECT type, user_id FROM task_events WHERE task_id = $1 ORDER BY id', [task.id]);
+      expect(rows).toEqual([
+        { type: 'created', user_id: alice.id },
+        { type: 'completed', user_id: alice.id },
+        { type: 'reopened', user_id: alice.id },
+      ]);
     });
 
     it('logs reschedules and deletes tasks', async () => {
-      const { body: task } = await agent.post('/api/tasks').send({ title: 'Later' }).expect(201);
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: 'Later' }).expect(201);
       const tomorrow = addDays(today, 1);
-      const { body: moved } = await agent.patch(`/api/tasks/${task.id}`).send({ scheduledDate: tomorrow }).expect(200);
+      const { body: moved } = await as.alice.patch(`/api/tasks/${task.id}`).send({ scheduledDate: tomorrow }).expect(200);
       expect(moved.scheduledDate).toBe(tomorrow);
-
       const { rows } = await db.query(
         `SELECT from_date, to_date FROM task_events WHERE task_id = $1 AND type = 'rescheduled'`,
         [task.id],
       );
       expect(rows).toEqual([{ from_date: today, to_date: tomorrow }]);
 
-      await agent.delete(`/api/tasks/${task.id}`).expect(204);
-      await agent.get(`/api/tasks/${task.id}`).expect(404);
+      await as.alice.delete(`/api/tasks/${task.id}`).expect(204);
+      await as.alice.get(`/api/tasks/${task.id}`).expect(404);
+    });
+  });
+
+  describe('privacy', () => {
+    it("never exposes one user's private tasks to another", async () => {
+      const { body: secret } = await as.alice.post('/api/tasks').send({ title: 'Private', dueDate: today }).expect(201);
+      const { body: backlogSecret } = await as.alice.post('/api/tasks').send({ title: 'P2', scheduledDate: null }).expect(201);
+      await as.alice.post(`/api/tasks/${backlogSecret.id}/complete`).expect(200);
+
+      const { body: day } = await as.bob.get(`/api/tasks/day/${today}`).expect(200);
+      expect([...day.open, ...day.done]).toEqual([]);
+      expect((await as.bob.get('/api/tasks/backlog').expect(200)).body.tasks).toEqual([]);
+      expect((await as.bob.get('/api/tasks/history').expect(200)).body.tasks).toEqual([]);
+      const { body: cal } = await as.bob.get(`/api/tasks/calendar?from=${today}&to=${today}`).expect(200);
+      expect([...cal.open, ...cal.done, ...cal.due]).toEqual([]);
+
+      await as.bob.get(`/api/tasks/${secret.id}`).expect(404);
+      await as.bob.patch(`/api/tasks/${secret.id}`).send({ title: 'pwned' }).expect(404);
+      await as.bob.patch(`/api/tasks/${secret.id}`).send({ memberIds: [bob.id] }).expect(404);
+      await as.bob.post(`/api/tasks/${secret.id}/complete`).expect(404);
+      await as.bob.post(`/api/tasks/${backlogSecret.id}/reopen`).expect(404);
+      await as.bob.delete(`/api/tasks/${secret.id}`).expect(404);
+
+      const { body: still } = await as.alice.get(`/api/tasks/${secret.id}`).expect(200);
+      expect(still).toMatchObject({ title: 'Private', status: 'open', memberIds: [alice.id] });
+    });
+  });
+
+  describe('sharing', () => {
+    it('lets every member see and complete a shared task', async () => {
+      const { body: task } = await as.alice
+        .post('/api/tasks')
+        .send({ title: 'Plan offsite', memberIds: [bob.id] })
+        .expect(201);
+      expect(task.memberIds).toEqual(expect.arrayContaining([alice.id, bob.id]));
+      expect(task.memberIds).toHaveLength(2);
+
+      const { body: bobsDay } = await as.bob.get(`/api/tasks/day/${today}`).expect(200);
+      expect(ids(bobsDay.open)).toEqual([task.id]);
+      await as.carol.get(`/api/tasks/${task.id}`).expect(404);
+
+      const { body: done } = await as.bob.post(`/api/tasks/${task.id}/complete`).expect(200);
+      expect(done.completedBy).toBe(bob.id);
+      const { body: alicesDay } = await as.alice.get(`/api/tasks/day/${today}`).expect(200);
+      expect(alicesDay.done).toEqual([expect.objectContaining({ id: task.id, completedBy: bob.id })]);
+    });
+
+    it('lets members change who a task is shared with, including leaving it', async () => {
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: 'Groceries' }).expect(201);
+      await as.alice.patch(`/api/tasks/${task.id}`).send({ memberIds: [alice.id, bob.id, carol.id] }).expect(200);
+      await as.carol.get(`/api/tasks/${task.id}`).expect(200);
+
+      // Bob leaves.
+      const { body: afterLeave } = await as.bob
+        .patch(`/api/tasks/${task.id}`)
+        .send({ memberIds: [alice.id, carol.id] })
+        .expect(200);
+      expect(afterLeave.memberIds).not.toContain(bob.id);
+      await as.bob.get(`/api/tasks/${task.id}`).expect(404);
+
+      const { rows } = await db.query(
+        `SELECT user_id FROM task_events WHERE task_id = $1 AND type = 'members_changed' ORDER BY id`,
+        [task.id],
+      );
+      expect(rows.map((r) => r.user_id)).toEqual([alice.id, bob.id]);
+    });
+
+    it('rejects empty member lists and inactive or unknown users', async () => {
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: 'x' }).expect(201);
+      await as.alice.patch(`/api/tasks/${task.id}`).send({ memberIds: [] }).expect(400);
+      await as.alice
+        .post('/api/tasks')
+        .send({ title: 'y', memberIds: ['00000000-0000-4000-8000-000000000000'] })
+        .expect(400);
+      await users.setDisabled('carol', true);
+      await as.alice.patch(`/api/tasks/${task.id}`).send({ memberIds: [alice.id, carol.id] }).expect(400);
+      const { body: unchanged } = await as.alice.get(`/api/tasks/${task.id}`).expect(200);
+      expect(unchanged.memberIds).toEqual([alice.id]);
+    });
+
+    it('only lets the creator delete a shared task', async () => {
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: 'Ours', memberIds: [bob.id] }).expect(201);
+      await as.bob.delete(`/api/tasks/${task.id}`).expect(403);
+      await as.alice.delete(`/api/tasks/${task.id}`).expect(204);
+      await as.bob.get(`/api/tasks/${task.id}`).expect(404);
     });
   });
 
@@ -131,36 +266,39 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
     it('returns completed, planned and due tasks within the range', async () => {
       const tomorrow = addDays(today, 1);
       const nextWeek = addDays(today, 7);
-      const { body: finished } = await agent.post('/api/tasks').send({ title: 'finished' }).expect(201);
-      await agent.post(`/api/tasks/${finished.id}/complete`).expect(200);
-      const { body: planned } = await agent.post('/api/tasks').send({ title: 'planned', scheduledDate: tomorrow }).expect(201);
-      const { body: deadline } = await agent
+      const { body: finished } = await as.alice.post('/api/tasks').send({ title: 'finished' }).expect(201);
+      await as.alice.post(`/api/tasks/${finished.id}/complete`).expect(200);
+      const { body: planned } = await as.alice
+        .post('/api/tasks')
+        .send({ title: 'planned', scheduledDate: tomorrow })
+        .expect(201);
+      const { body: deadline } = await as.alice
         .post('/api/tasks')
         .send({ title: 'deadline', scheduledDate: null, dueDate: nextWeek })
         .expect(201);
-      await agent.post('/api/tasks').send({ title: 'out of range', scheduledDate: addDays(today, 40) }).expect(201);
+      await as.alice.post('/api/tasks').send({ title: 'out of range', scheduledDate: addDays(today, 40) }).expect(201);
 
-      const { body } = await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 13)}`).expect(200);
-      const ids = (list: { id: string }[]) => list.map((t) => t.id);
+      const { body } = await as.alice.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 13)}`).expect(200);
       expect(ids(body.done)).toEqual([finished.id]);
       expect(ids(body.open)).toEqual([planned.id]);
       expect(ids(body.due)).toEqual([deadline.id]);
     });
 
     it('rejects missing, inverted and oversized ranges', async () => {
-      await agent.get('/api/tasks/calendar').expect(400);
-      await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, -1)}`).expect(400);
-      await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 62)}`).expect(400);
-      await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 61)}`).expect(200);
+      await as.alice.get('/api/tasks/calendar').expect(400);
+      await as.alice.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, -1)}`).expect(400);
+      await as.alice.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 62)}`).expect(400);
+      await as.alice.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 61)}`).expect(200);
     });
   });
 
   describe('rollover', () => {
     async function insertOpenTask(title: string, scheduledDate: string | null) {
       const { rows } = await db.query(
-        `INSERT INTO tasks (title, scheduled_date, original_date) VALUES ($1, $2, $2) RETURNING id`,
-        [title, scheduledDate],
+        `INSERT INTO tasks (title, scheduled_date, original_date, created_by) VALUES ($1, $2, $2, $3) RETURNING id`,
+        [title, scheduledDate, alice.id],
       );
+      await db.query('INSERT INTO task_members (task_id, user_id) VALUES ($1, $2)', [rows[0].id, alice.id]);
       return rows[0].id as string;
     }
 
@@ -178,9 +316,7 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
       expect(await rolloverTasks(db, today)).toBe(1);
       expect(await rolloverTasks(db, today)).toBe(0);
 
-      const { rows } = await db.query(
-        `SELECT id, scheduled_date, original_date, rollover_count FROM tasks`,
-      );
+      const { rows } = await db.query(`SELECT id, scheduled_date, original_date, rollover_count FROM tasks`);
       const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
       expect(byId[stale]).toMatchObject({ scheduled_date: today, original_date: addDays(today, -3), rollover_count: 1 });
       expect(byId[current].scheduled_date).toBe(today);
@@ -204,6 +340,35 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
 
       const { rows } = await db.query('SELECT scheduled_date, rollover_count FROM tasks WHERE id = $1', [id]);
       expect(rows[0]).toEqual({ scheduled_date: '2026-11-05', rollover_count: 2 });
+    });
+  });
+
+  // Runs last: it rebuilds the schema to simulate a database from the single-user version.
+  describe('upgrade from single-user', () => {
+    it('creates the first user from APP_PASSWORD and gives it every existing task', async () => {
+      await resetSchema();
+      await db.query(`INSERT INTO tasks (title, scheduled_date) VALUES ('legacy one', $1), ('legacy two', NULL)`, [today]);
+      const logs: string[] = [];
+
+      await bootstrapFirstUser(users, { username: 'julian', password: 'short' }, (m) => logs.push(m));
+      await bootstrapFirstUser(users, { username: 'other', password: 'whatever' }, (m) => logs.push(m));
+
+      expect((await users.list()).map((u) => u.username)).toEqual(['julian']);
+      expect(logs).toHaveLength(1);
+      const agent = request.agent(app);
+      await agent.post('/api/auth/login').send({ username: 'julian', password: 'short' }).expect(200);
+      const { body: day } = await agent.get(`/api/tasks/day/${today}`).expect(200);
+      expect(day.open.map((t: { title: string }) => t.title)).toEqual(['legacy one']);
+      const { body: backlog } = await agent.get('/api/tasks/backlog').expect(200);
+      expect(backlog.tasks).toEqual([expect.objectContaining({ title: 'legacy two', createdBy: day.open[0].createdBy })]);
+    });
+
+    it('does nothing without APP_PASSWORD', async () => {
+      await resetSchema();
+      const logs: string[] = [];
+      await bootstrapFirstUser(users, { username: 'admin', password: '' }, (m) => logs.push(m));
+      expect(await users.count()).toBe(0);
+      expect(logs[0]).toMatch(/users\.js add/);
     });
   });
 });

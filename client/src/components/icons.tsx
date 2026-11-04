@@ -50,6 +50,12 @@ export const ChevronRight = () => (
     <path d="M9 18l6-6-6-6" />
   </svg>
 );
+export const PeopleIcon = () => (
+  <svg {...base}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" />
+  </svg>
+);
 export const CheckIcon = () => (
   <svg {...base} width={14} height={14} strokeWidth={3}>
     <path d="M5 12l5 5 9-10" />

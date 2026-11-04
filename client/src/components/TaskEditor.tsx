@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { longDate } from '../dates';
-import { useDeleteTask, useToggleTask, useUpdateTask } from '../queries';
+import { useDeleteTask, useMe, useToggleTask, useUpdateTask, useUsers } from '../queries';
+import { SharePicker } from './SharePicker';
 import { PRIORITIES, type Priority, type Task, type TaskInput } from '../types';
 
 interface Props {
@@ -17,6 +18,16 @@ export function TaskEditor({ task, today, onClose }: Props) {
   const [inBacklog, setInBacklog] = useState(task.scheduledDate === null);
   const [scheduledDate, setScheduledDate] = useState(task.scheduledDate ?? today);
   const [dueDate, setDueDate] = useState(task.dueDate ?? '');
+  const me = useMe();
+  const { users, byId } = useUsers();
+  const [shareWith, setShareWith] = useState(task.memberIds.filter((id) => id !== me.id));
+  // Everyone else who could be on the task: active users plus any existing (possibly disabled) members.
+  const people = [
+    ...users.filter((u) => u.id !== me.id),
+    ...shareWith.filter((id) => !users.some((u) => u.id === id)).map((id) => ({ id, username: id, displayName: 'Former user' })),
+  ];
+  const isCreator = task.createdBy === null || task.createdBy === me.id;
+  const creatorName = task.createdBy && !isCreator ? (byId.get(task.createdBy)?.displayName ?? 'someone') : null;
 
   const update = useUpdateTask();
   const remove = useDeleteTask();
@@ -40,9 +51,17 @@ export function TaskEditor({ task, today, onClose }: Props) {
     }
     const nextDue = dueDate || null;
     if (nextDue !== task.dueDate) patch.dueDate = nextDue;
+    const nextMembers = [me.id, ...shareWith];
+    if (!sameSet(nextMembers, task.memberIds)) patch.memberIds = nextMembers;
 
     if (Object.keys(patch).length === 0) return onClose();
     update.mutate({ id: task.id, patch }, { onSuccess: onClose });
+  };
+
+  const leave = () => {
+    if (confirm(`Leave "${task.title}"? It will disappear from your lists.`)) {
+      update.mutate({ id: task.id, patch: { memberIds: task.memberIds.filter((id) => id !== me.id) } }, { onSuccess: onClose });
+    }
   };
 
   const del = () => {
@@ -114,6 +133,14 @@ export function TaskEditor({ task, today, onClose }: Props) {
           <p className="muted">Completed {task.completedOn && longDate(task.completedOn, today)}</p>
         )}
 
+        {people.length > 0 && (
+          <fieldset className="field">
+            <legend>Shared with</legend>
+            <SharePicker people={people} selected={shareWith} onChange={setShareWith} />
+            {creatorName && <p className="muted">Created by {creatorName}</p>}
+          </fieldset>
+        )}
+
         <label className="field">
           <span className="field__label">Due date</span>
           <div className="row">
@@ -129,9 +156,15 @@ export function TaskEditor({ task, today, onClose }: Props) {
         {error && <p className="form-error">{error.message}</p>}
 
         <div className="sheet__actions">
-          <button type="button" className="btn btn--danger-ghost" onClick={del} disabled={remove.isPending}>
-            Delete
-          </button>
+          {isCreator ? (
+            <button type="button" className="btn btn--danger-ghost" onClick={del} disabled={remove.isPending}>
+              Delete
+            </button>
+          ) : (
+            <button type="button" className="btn btn--danger-ghost" onClick={leave} disabled={update.isPending}>
+              Leave
+            </button>
+          )}
           <span className="spacer" />
           <button
             type="button"
@@ -148,4 +181,8 @@ export function TaskEditor({ task, today, onClose }: Props) {
       </form>
     </dialog>
   );
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x) => b.includes(x));
 }

@@ -1,6 +1,20 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { api } from './api';
-import type { Task, TaskInput } from './types';
+import type { Task, TaskInput, User } from './types';
+
+/** The signed-in user. Only call below the login gate in App. */
+export function useMe(): User {
+  const { data } = useQuery({ queryKey: ['me'], queryFn: api.me, staleTime: Infinity });
+  return data!.user!;
+}
+
+/** Everyone who can be shared with, keyed by id for quick name lookups. */
+export function useUsers() {
+  const query = useQuery({ queryKey: ['users'], queryFn: api.users, staleTime: 5 * 60 * 1000 });
+  const byId = useMemo(() => new Map((query.data?.users ?? []).map((u) => [u.id, u])), [query.data]);
+  return { users: query.data?.users ?? [], byId };
+}
 
 export function useMeta() {
   return useQuery({

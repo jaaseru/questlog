@@ -2,9 +2,19 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { AppConfig } from './config.js';
+import type { User, UserRepo } from './users.js';
 
 export const SESSION_COOKIE = 'ql_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
 
 function sign(data: string, secret: string): string {
   return createHmac('sha256', secret).update(data).digest('base64url');
@@ -17,20 +27,21 @@ function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(ha, hb);
 }
 
-export function createSessionToken(secret: string, now = Date.now()): string {
-  const payload = Buffer.from(JSON.stringify({ exp: now + SESSION_TTL_MS })).toString('base64url');
+export function createSessionToken(userId: string, secret: string, now = Date.now()): string {
+  const payload = Buffer.from(JSON.stringify({ uid: userId, exp: now + SESSION_TTL_MS })).toString('base64url');
   return `${payload}.${sign(payload, secret)}`;
 }
 
-export function verifySessionToken(token: string | undefined, secret: string, now = Date.now()): boolean {
-  if (!token) return false;
+/** Returns the user id in a valid, unexpired token, otherwise null. */
+export function verifySessionToken(token: string | undefined, secret: string, now = Date.now()): string | null {
+  if (!token) return null;
   const [payload, signature] = token.split('.');
-  if (!payload || !signature || !safeEqual(signature, sign(payload, secret))) return false;
+  if (!payload || !signature || !safeEqual(signature, sign(payload, secret))) return null;
   try {
-    const { exp } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return typeof exp === 'number' && exp > now;
+    const { uid, exp } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return typeof uid === 'string' && typeof exp === 'number' && exp > now ? uid : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -54,14 +65,24 @@ function loginLimiter(maxAttempts = 10, windowMs = 15 * 60 * 1000): RequestHandl
   };
 }
 
-export function requireAuth(config: AppConfig): RequestHandler {
-  return (req, res, next) => {
-    if (verifySessionToken(req.cookies?.[SESSION_COOKIE], config.sessionSecret)) return next();
-    res.status(401).json({ error: 'Not signed in' });
+async function sessionUser(token: string | undefined, config: AppConfig, users: UserRepo): Promise<User | null> {
+  const uid = verifySessionToken(token, config.sessionSecret);
+  if (!uid) return null;
+  const user = await users.get(uid);
+  return user && !user.disabled ? user : null;
+}
+
+/** Rejects requests without a session for an active user; sets req.user otherwise. */
+export function requireAuth(config: AppConfig, users: UserRepo): RequestHandler {
+  return async (req, res, next) => {
+    const user = await sessionUser(req.cookies?.[SESSION_COOKIE], config, users);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    req.user = user;
+    next();
   };
 }
 
-export function authRouter(config: AppConfig): Router {
+export function authRouter(config: AppConfig, users: UserRepo): Router {
   const router = Router();
   const cookieOptions = {
     httpOnly: true,
@@ -69,17 +90,17 @@ export function authRouter(config: AppConfig): Router {
     sameSite: 'lax' as const,
     path: '/',
   };
+  const credentials = z.object({ username: z.string().max(100), password: z.string().max(1000) });
 
-  router.post('/login', loginLimiter(), (req, res) => {
-    const parsed = z.object({ password: z.string().max(1000) }).safeParse(req.body);
-    if (!parsed.success || !safeEqual(parsed.data.password, config.appPassword)) {
-      return res.status(401).json({ error: 'Wrong password' });
-    }
-    res.cookie(SESSION_COOKIE, createSessionToken(config.sessionSecret), {
+  router.post('/login', loginLimiter(), async (req, res) => {
+    const parsed = credentials.safeParse(req.body);
+    const user = parsed.success ? await users.authenticate(parsed.data.username, parsed.data.password) : null;
+    if (!user) return res.status(401).json({ error: 'Wrong username or password' });
+    res.cookie(SESSION_COOKIE, createSessionToken(user.id, config.sessionSecret), {
       ...cookieOptions,
       maxAge: SESSION_TTL_MS,
     });
-    res.json({ ok: true });
+    res.json({ user: publicUser(user) });
   });
 
   router.post('/logout', (_req, res) => {
@@ -87,9 +108,14 @@ export function authRouter(config: AppConfig): Router {
     res.json({ ok: true });
   });
 
-  router.get('/me', (req, res) => {
-    res.json({ signedIn: verifySessionToken(req.cookies?.[SESSION_COOKIE], config.sessionSecret) });
+  router.get('/me', async (req, res) => {
+    const user = await sessionUser(req.cookies?.[SESSION_COOKIE], config, users);
+    res.json(user ? { signedIn: true, user: publicUser(user) } : { signedIn: false });
   });
 
   return router;
+}
+
+export function publicUser(user: User) {
+  return { id: user.id, username: user.username, displayName: user.displayName };
 }

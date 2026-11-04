@@ -1,4 +1,4 @@
-import type { Task, TaskInput } from './types';
+import type { Task, TaskInput, User } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -27,8 +27,10 @@ const json = (method: string, data?: unknown): RequestInit => ({
 });
 
 export const api = {
-  me: () => request<{ signedIn: boolean }>('/auth/me'),
-  login: (password: string) => request<{ ok: true }>('/auth/login', json('POST', { password })),
+  me: () => request<{ signedIn: boolean; user?: User }>('/auth/me'),
+  login: (username: string, password: string) =>
+    request<{ user: User }>('/auth/login', json('POST', { username, password })),
+  users: () => request<{ users: User[] }>('/users'),
   logout: () => request<{ ok: true }>('/auth/logout', json('POST')),
   meta: () => request<{ today: string; timezone: string }>('/meta'),
 
