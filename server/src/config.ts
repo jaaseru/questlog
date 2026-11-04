@@ -52,6 +52,9 @@ export function describeDatabaseUrlProblem(url: string): string | null {
       'database service exactly. Easiest fix: delete the variable and re-add it with "Add Reference".'
     );
   }
+  if (/^\s*DATABASE_URL\s*=/i.test(url)) {
+    return 'DATABASE_URL value starts with "DATABASE_URL=". Put only the URL in the value field, starting with postgresql://';
+  }
   if (/^\s|\s$/.test(url) || /^["']/.test(url)) {
     return 'DATABASE_URL has surrounding quotes or whitespace. Remove them so the value starts with postgresql://';
   }
