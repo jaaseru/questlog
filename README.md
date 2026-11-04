@@ -17,8 +17,7 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 
 ## Roadmap
 
-1. **Nightly AI review.** A scheduled job reads open tasks (age, roll-over count, due dates, priority) and flags the ones that need a follow-up. The `task_events` log already records the history it needs.
-2. Quality-of-life: drag to reorder, swipe gestures, tags/projects, search.
+See [ROADMAP.md](ROADMAP.md) for possible future features, grouped by theme with rough sizes and a suggested order.
 
 ## Stack
 
