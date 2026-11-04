@@ -11,6 +11,10 @@ describe('describeDatabaseUrlProblem', () => {
     expect(describeDatabaseUrlProblem('${{Postgres.DATABASE_URL}}')).toMatch(/unresolved Railway reference/);
   });
 
+  it('flags a pasted KEY=value line', () => {
+    expect(describeDatabaseUrlProblem('DATABASE_URL=postgresql://u:p@h/db')).toMatch(/starts with "DATABASE_URL="/);
+  });
+
   it('flags quotes and whitespace', () => {
     expect(describeDatabaseUrlProblem('"postgresql://u:p@h/db"')).toMatch(/quotes/);
     expect(describeDatabaseUrlProblem(' postgresql://u:p@h/db')).toMatch(/whitespace/);
