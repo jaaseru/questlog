@@ -12,7 +12,7 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 - **Backlog.** Tasks with no day. Tap **Today** to pull one in.
 - **History.** Completed tasks grouped by the day they were finished.
 - **Task details.** Title, notes, priority (urgent / high / medium / low), scheduled day, due date.
-- **A few users, managed by you.** Accounts are added from the command line (see [Managing users](#managing-users)). Each person sees only their own tasks and the tasks shared with them.
+- **A few users, managed by you.** Accounts are added from the command line (see [docs/managing-users.md](docs/managing-users.md)). Each person sees only their own tasks and the tasks shared with them.
 - **Shared tasks.** Share a task with one or more people from quick-add (the people button) or the task editor. Every member sees it on their lists and can edit or complete it; the list shows who completed it. Only the creator can delete a shared task; others can **Leave** it.
 
 ## Roadmap
@@ -90,6 +90,8 @@ The API tests **wipe** the database they're pointed at. Give them a dedicated on
 On your phone, open the site and use **Add to Home Screen** to get an app-like, full-screen launcher.
 
 ## Managing users
+
+**Step-by-step guide: [docs/managing-users.md](docs/managing-users.md)** (Railway CLI setup, every command, troubleshooting).
 
 Accounts live in the `users` table. Passwords are hashed with scrypt, so add and change them with the bundled tool rather than by editing the table.
 
