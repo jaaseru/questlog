@@ -20,7 +20,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   };
 
   const problems: string[] = [];
-  if (!config.databaseUrl) problems.push('DATABASE_URL is required');
+  if (!config.databaseUrl) {
+    problems.push(
+      'DATABASE_URL is required. On Railway, add it to this app service (not the database) as a reference ' +
+        'to your Postgres service, e.g. ${{Postgres.DATABASE_URL}}, where "Postgres" must match the database service name.',
+    );
+  }
   if (!config.appPassword) problems.push('APP_PASSWORD is required');
   if (config.sessionSecret.length < 32) problems.push('SESSION_SECRET must be at least 32 characters');
   try {
