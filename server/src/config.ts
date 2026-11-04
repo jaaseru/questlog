@@ -20,7 +20,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   };
 
   const problems: string[] = [];
-  if (!config.databaseUrl) problems.push('DATABASE_URL is required');
+  if (!config.databaseUrl) {
+    problems.push(
+      'DATABASE_URL is required. On Railway, add it to this app service (not the database) as a reference ' +
+        'to your Postgres service, e.g. ${{Postgres.DATABASE_URL}}, where "Postgres" must match the database service name.',
+    );
+  } else {
+    const urlProblem = describeDatabaseUrlProblem(config.databaseUrl);
+    if (urlProblem) problems.push(urlProblem);
+  }
   if (!config.appPassword) problems.push('APP_PASSWORD is required');
   if (config.sessionSecret.length < 32) problems.push('SESSION_SECRET must be at least 32 characters');
   try {
@@ -30,4 +38,32 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   if (problems.length) throw new Error(`Invalid configuration:\n- ${problems.join('\n- ')}`);
   return config;
+}
+
+/**
+ * pg silently treats anything that isn't a full URL as a path on a host called "base",
+ * which surfaces as a confusing `getaddrinfo ENOTFOUND base`. Catch the common mistakes
+ * up front. The value itself is never echoed, since it contains the database password.
+ */
+export function describeDatabaseUrlProblem(url: string): string | null {
+  if (url.includes('${{')) {
+    return (
+      'DATABASE_URL contains an unresolved Railway reference (${{...}}). The service name inside it must match your ' +
+      'database service exactly. Easiest fix: delete the variable and re-add it with "Add Reference".'
+    );
+  }
+  if (/^\s|\s$/.test(url) || /^["']/.test(url)) {
+    return 'DATABASE_URL has surrounding quotes or whitespace. Remove them so the value starts with postgresql://';
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return 'DATABASE_URL is not a valid URL. It should look like postgresql://user:password@host:5432/database';
+  }
+  if (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') {
+    return `DATABASE_URL must start with postgresql:// (got "${parsed.protocol}//").`;
+  }
+  if (!parsed.hostname) return 'DATABASE_URL is missing a host name.';
+  return null;
 }
