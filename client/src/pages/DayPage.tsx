@@ -1,7 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router';
 import { DayTasks } from '../components/DayTasks';
 import { ChevronLeft, ChevronRight } from '../components/icons';
-import { addDays, isIsoDate, longDate, relativeDayName } from '../dates';
+import { addDays, isIsoDate, isoWeek, longDate, relativeDayName } from '../dates';
 import { useToday } from '../queries';
 
 export function DayPage() {
@@ -26,7 +26,7 @@ function DayView({ date, today }: { date: string; today: string }) {
         <div className="day-header__title">
           <h1>{relativeDayName(date, today)}</h1>
           <p className="muted">
-            {longDate(date, today)}
+            {longDate(date, today)} · Week {isoWeek(date)}
             {isPast && ' · Journal'}
           </p>
         </div>

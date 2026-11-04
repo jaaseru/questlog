@@ -705,9 +705,26 @@ textarea {
 
 .calendar {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: 1.75rem repeat(7, minmax(0, 1fr));
   gap: 4px;
   margin-top: 8px;
+}
+
+.calendar__weekno {
+  padding-top: 10px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.calendar__weekno--head {
+  align-self: center;
+  padding: 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
 }
 
 .calendar__weekday {
@@ -859,7 +876,13 @@ textarea {
 /* Wider screens: show task titles in the cells instead of counters. */
 @media (min-width: 800px) {
   .calendar {
+    grid-template-columns: 2.25rem repeat(7, minmax(0, 1fr));
     gap: 6px;
+  }
+
+  .calendar__weekno:not(.calendar__weekno--head) {
+    padding-top: 12px;
+    font-size: 0.8rem;
   }
 
   .calendar__day {

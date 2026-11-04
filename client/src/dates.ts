@@ -89,3 +89,12 @@ export function timeAgo(iso: string, now = Date.now()): string {
   }
   return 'just now';
 }
+
+/** ISO 8601 week number (weeks start on Monday; week 1 contains the year's first Thursday). */
+export function isoWeek(date: string): number {
+  const d = asUtc(date);
+  // Move to the Thursday of this week: its year is the week's year.
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3);
+  const yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return Math.floor((d.getTime() - yearStart) / 86_400_000 / 7) + 1;
+}

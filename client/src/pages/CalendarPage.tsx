@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DayTasks } from '../components/DayTasks';
 import { ChevronLeft, ChevronRight } from '../components/icons';
@@ -6,6 +6,7 @@ import {
   addMonths,
   isIsoDate,
   isIsoMonth,
+  isoWeek,
   longDate,
   monthGrid,
   monthLabel,
@@ -81,21 +82,30 @@ function CalendarView({ today }: { today: string }) {
       {error && <p className="form-error">{error.message}</p>}
 
       <div className="calendar" role="group" aria-label={monthLabel(month)}>
+        <div className="calendar__weekno calendar__weekno--head" aria-hidden>
+          Wk
+        </div>
         {weekdayNames().map((name) => (
           <div key={name} className="calendar__weekday" aria-hidden>
             {name}
           </div>
         ))}
-        {grid.map((date) => (
-          <CalendarCell
-            key={date}
-            date={date}
-            today={today}
-            inMonth={date.startsWith(month)}
-            selected={date === selected}
-            entries={byDay.get(date) ?? EMPTY}
-            onSelect={() => go({ day: date, month: date.slice(0, 7) })}
-          />
+        {grid.map((date, i) => (
+          <Fragment key={date}>
+            {i % 7 === 0 && (
+              <div className="calendar__weekno" aria-label={`Week ${isoWeek(date)}`}>
+                {isoWeek(date)}
+              </div>
+            )}
+            <CalendarCell
+              date={date}
+              today={today}
+              inMonth={date.startsWith(month)}
+              selected={date === selected}
+              entries={byDay.get(date) ?? EMPTY}
+              onSelect={() => go({ day: date, month: date.slice(0, 7) })}
+            />
+          </Fragment>
         ))}
       </div>
 
