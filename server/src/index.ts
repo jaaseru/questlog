@@ -4,12 +4,14 @@ import { loadConfig } from './config.js';
 import { createPool } from './db.js';
 import { migrate } from './migrate.js';
 import { createRolloverScheduler } from './rollover.js';
+import { bootstrapFirstUser, UserRepo } from './users.js';
 
 const config = loadConfig();
 const db = createPool(config.databaseUrl, config.databaseSsl);
 const log = (msg: string) => console.log(`[questlog] ${msg}`);
 
 await migrate(db, log);
+await bootstrapFirstUser(new UserRepo(db), { username: config.adminUsername, password: config.appPassword }, log);
 
 const scheduler = createRolloverScheduler(db, config.timezone, log);
 await scheduler.ensure();

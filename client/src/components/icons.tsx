@@ -18,6 +18,12 @@ export const TodayIcon = () => (
     <path d="M3 9h18M8 2v4M16 2v4M9 15l2 2 4-4" />
   </svg>
 );
+export const CalendarIcon = () => (
+  <svg {...base}>
+    <rect x="3" y="4" width="18" height="17" rx="3" />
+    <path d="M3 9h18M8 2v4M16 2v4M7.5 13h.01M12 13h.01M16.5 13h.01M7.5 17h.01M12 17h.01" />
+  </svg>
+);
 export const BacklogIcon = () => (
   <svg {...base}>
     <path d="M4 6h16M4 12h16M4 18h10" />
@@ -42,6 +48,18 @@ export const ChevronLeft = () => (
 export const ChevronRight = () => (
   <svg {...base}>
     <path d="M9 18l6-6-6-6" />
+  </svg>
+);
+export const PeopleIcon = () => (
+  <svg {...base}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" />
+  </svg>
+);
+export const ShieldIcon = () => (
+  <svg {...base}>
+    <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z" />
+    <path d="M9 12l2 2 4-4" />
   </svg>
 );
 export const CheckIcon = () => (

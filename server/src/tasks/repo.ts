@@ -1,4 +1,6 @@
-import type { Db } from '../db.js';
+import type pg from 'pg';
+import { withTransaction, type Db, type Queryable } from '../db.js';
+import { HttpError } from '../errors.js';
 
 export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export type Priority = (typeof PRIORITIES)[number];
@@ -16,6 +18,10 @@ export interface Task {
   rolloverCount: number;
   completedAt: string | null;
   completedOn: string | null;
+  completedBy: string | null;
+  createdBy: string | null;
+  /** Users who can see and work on the task. More than one means it's shared. */
+  memberIds: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -26,152 +32,230 @@ export interface TaskInput {
   priority?: Priority;
   scheduledDate?: string | null;
   dueDate?: string | null;
+  /** On create: other users to share with. On update: the complete member list. */
+  memberIds?: string[];
 }
 
 export type TaskPatch = Partial<TaskInput>;
 
 const COLUMNS = `
-  id, title, notes, status, priority,
-  scheduled_date AS "scheduledDate",
-  original_date AS "originalDate",
-  due_date AS "dueDate",
-  rollover_count AS "rolloverCount",
-  completed_at AS "completedAt",
-  completed_on AS "completedOn",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt"`;
+  t.id, t.title, t.notes, t.status, t.priority,
+  t.scheduled_date AS "scheduledDate",
+  t.original_date AS "originalDate",
+  t.due_date AS "dueDate",
+  t.rollover_count AS "rolloverCount",
+  t.completed_at AS "completedAt",
+  t.completed_on AS "completedOn",
+  t.completed_by AS "completedBy",
+  t.created_by AS "createdBy",
+  ARRAY(SELECT m.user_id FROM task_members m WHERE m.task_id = t.id ORDER BY m.added_at, m.user_id) AS "memberIds",
+  t.created_at AS "createdAt",
+  t.updated_at AS "updatedAt"`;
+
+/** Every query takes the acting user as $1 and only sees tasks that user is a member of. */
+const VISIBLE = `EXISTS (SELECT 1 FROM task_members vm WHERE vm.task_id = t.id AND vm.user_id = $1)`;
 
 const BY_PRIORITY = `
-  CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
-  created_at`;
+  CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+  t.created_at`;
+
+const FIELD_COLUMNS = {
+  title: 'title',
+  notes: 'notes',
+  priority: 'priority',
+  scheduledDate: 'scheduled_date',
+  dueDate: 'due_date',
+} as const;
+
+export type DeleteResult = 'deleted' | 'not_found' | 'forbidden';
 
 export class TaskRepo {
   constructor(private readonly db: Db) {}
 
   /** A day page: open tasks on that day's list plus tasks completed that day. */
-  async listForDay(date: string): Promise<{ open: Task[]; done: Task[] }> {
+  async listForDay(userId: string, date: string): Promise<{ open: Task[]; done: Task[] }> {
     const [open, done] = await Promise.all([
-      this.db.query<Task>(
-        `SELECT ${COLUMNS} FROM tasks WHERE status = 'open' AND scheduled_date = $1 ORDER BY ${BY_PRIORITY}`,
-        [date],
-      ),
-      this.db.query<Task>(
-        `SELECT ${COLUMNS} FROM tasks WHERE status = 'done' AND completed_on = $1 ORDER BY completed_at`,
-        [date],
-      ),
+      this.select(`t.status = 'open' AND t.scheduled_date = $2 ORDER BY ${BY_PRIORITY}`, [userId, date]),
+      this.select(`t.status = 'done' AND t.completed_on = $2 ORDER BY t.completed_at`, [userId, date]),
     ]);
-    return { open: open.rows, done: done.rows };
+    return { open, done };
   }
 
-  async listBacklog(): Promise<Task[]> {
-    const { rows } = await this.db.query<Task>(
-      `SELECT ${COLUMNS} FROM tasks WHERE status = 'open' AND scheduled_date IS NULL ORDER BY ${BY_PRIORITY}`,
-    );
-    return rows;
+  listBacklog(userId: string): Promise<Task[]> {
+    return this.select(`t.status = 'open' AND t.scheduled_date IS NULL ORDER BY ${BY_PRIORITY}`, [userId]);
   }
 
   /** Completed tasks between two dates (inclusive), newest first. */
-  async listCompleted(from: string, to: string): Promise<Task[]> {
-    const { rows } = await this.db.query<Task>(
-      `SELECT ${COLUMNS} FROM tasks
-       WHERE status = 'done' AND completed_on BETWEEN $1 AND $2
-       ORDER BY completed_on DESC, completed_at DESC`,
-      [from, to],
+  listCompleted(userId: string, from: string, to: string): Promise<Task[]> {
+    return this.select(
+      `t.status = 'done' AND t.completed_on BETWEEN $2 AND $3 ORDER BY t.completed_on DESC, t.completed_at DESC`,
+      [userId, from, to],
     );
-    return rows;
   }
 
-  async get(id: string): Promise<Task | null> {
-    const { rows } = await this.db.query<Task>(`SELECT ${COLUMNS} FROM tasks WHERE id = $1`, [id]);
-    return rows[0] ?? null;
+  /**
+   * Everything a calendar needs for a date range (inclusive):
+   * - done: tasks completed in the range (the journal)
+   * - open: open tasks on a day list in the range (today and planned days)
+   * - due: open tasks with a due date in the range (deadline markers)
+   */
+  async listCalendar(userId: string, from: string, to: string): Promise<{ done: Task[]; open: Task[]; due: Task[] }> {
+    const params = [userId, from, to];
+    const [done, open, due] = await Promise.all([
+      this.select(`t.status = 'done' AND t.completed_on BETWEEN $2 AND $3 ORDER BY t.completed_on, t.completed_at`, params),
+      this.select(
+        `t.status = 'open' AND t.scheduled_date BETWEEN $2 AND $3 ORDER BY t.scheduled_date, ${BY_PRIORITY}`,
+        params,
+      ),
+      this.select(`t.status = 'open' AND t.due_date BETWEEN $2 AND $3 ORDER BY t.due_date, ${BY_PRIORITY}`, params),
+    ]);
+    return { done, open, due };
   }
 
-  async create(input: TaskInput): Promise<Task> {
-    const scheduled = input.scheduledDate ?? null;
-    const { rows } = await this.db.query<Task>(
-      `WITH inserted AS (
-         INSERT INTO tasks (title, notes, priority, scheduled_date, original_date, due_date)
-         VALUES ($1, $2, $3, $4, $4, $5)
-         RETURNING *
-       ), ev AS (
-         INSERT INTO task_events (task_id, type, to_date) SELECT id, 'created', scheduled_date FROM inserted
-       )
-       SELECT ${COLUMNS} FROM inserted`,
-      [input.title, input.notes ?? '', input.priority ?? 'medium', scheduled, input.dueDate ?? null],
-    );
-    return rows[0]!;
+  async get(userId: string, id: string, db: Queryable = this.db): Promise<Task | null> {
+    return (await this.select('t.id = $2', [userId, id], db))[0] ?? null;
   }
 
-  async update(id: string, patch: TaskPatch): Promise<Task | null> {
-    const columnFor: Record<keyof TaskInput, string> = {
-      title: 'title',
-      notes: 'notes',
-      priority: 'priority',
-      scheduledDate: 'scheduled_date',
-      dueDate: 'due_date',
-    };
-    const sets: string[] = [];
-    const values: unknown[] = [id];
-    for (const [key, column] of Object.entries(columnFor) as [keyof TaskInput, string][]) {
-      if (patch[key] === undefined) continue;
-      values.push(patch[key]);
-      sets.push(`${column} = $${values.length}`);
-    }
-    if (sets.length === 0) return this.get(id);
-
-    const { rows } = await this.db.query<Task>(
-      `WITH before AS (SELECT id, scheduled_date FROM tasks WHERE id = $1 FOR UPDATE),
-       updated AS (
-         UPDATE tasks t SET ${sets.join(', ')}, updated_at = now()
-         FROM before WHERE t.id = before.id
-         RETURNING t.*, before.scheduled_date AS previous_date
-       ), ev AS (
-         INSERT INTO task_events (task_id, type, from_date, to_date)
-         SELECT id, 'rescheduled', previous_date, scheduled_date FROM updated
-         WHERE previous_date IS DISTINCT FROM scheduled_date
-       )
-       SELECT ${COLUMNS} FROM updated`,
-      values,
-    );
-    return rows[0] ?? null;
+  async create(userId: string, input: TaskInput): Promise<Task> {
+    return withTransaction(this.db, async (c) => {
+      const scheduled = input.scheduledDate ?? null;
+      const { rows } = await c.query<{ id: string }>(
+        `INSERT INTO tasks (title, notes, priority, scheduled_date, original_date, due_date, created_by)
+         VALUES ($1, $2, $3, $4, $4, $5, $6) RETURNING id`,
+        [input.title, input.notes ?? '', input.priority ?? 'medium', scheduled, input.dueDate ?? null, userId],
+      );
+      const id = rows[0]!.id;
+      const members = [userId, ...(input.memberIds ?? []).filter((m) => m !== userId)];
+      await assertActiveUsers(c, members);
+      await c.query(
+        `INSERT INTO task_members (task_id, user_id) SELECT $1, unnest($2::uuid[]) ON CONFLICT DO NOTHING`,
+        [id, members],
+      );
+      await logEvent(c, id, userId, 'created', null, scheduled);
+      return (await this.get(userId, id, c))!;
+    });
   }
 
-  /** Marks an open task done on `today`. Returns null if the task doesn't exist or is already done. */
-  async complete(id: string, today: string): Promise<Task | null> {
-    const { rows } = await this.db.query<Task>(
-      `WITH updated AS (
-         UPDATE tasks SET status = 'done', completed_at = now(), completed_on = $2, updated_at = now()
-         WHERE id = $1 AND status = 'open'
-         RETURNING *
-       ), ev AS (
-         INSERT INTO task_events (task_id, type, to_date) SELECT id, 'completed', $2 FROM updated
-       )
-       SELECT ${COLUMNS} FROM updated`,
-      [id, today],
-    );
-    return rows[0] ?? null;
+  async update(userId: string, id: string, patch: TaskPatch): Promise<Task | null> {
+    return withTransaction(this.db, async (c) => {
+      const { rows } = await c.query<{ scheduled_date: string | null }>(
+        `SELECT t.scheduled_date FROM tasks t WHERE t.id = $2 AND ${VISIBLE} FOR UPDATE`,
+        [userId, id],
+      );
+      if (!rows[0]) return null;
+      const previousDate = rows[0].scheduled_date;
+
+      const sets: string[] = [];
+      const values: unknown[] = [id];
+      for (const [key, column] of Object.entries(FIELD_COLUMNS) as [keyof typeof FIELD_COLUMNS, string][]) {
+        if (patch[key] === undefined) continue;
+        values.push(patch[key]);
+        sets.push(`${column} = $${values.length}`);
+      }
+      if (sets.length) {
+        await c.query(`UPDATE tasks SET ${sets.join(', ')}, updated_at = now() WHERE id = $1`, values);
+      }
+      if (patch.scheduledDate !== undefined && patch.scheduledDate !== previousDate) {
+        await logEvent(c, id, userId, 'rescheduled', previousDate, patch.scheduledDate);
+      }
+
+      if (patch.memberIds !== undefined) {
+        const members = [...new Set(patch.memberIds)];
+        if (members.length === 0) throw new HttpError(400, 'A task needs at least one member');
+        const { rows: current } = await c.query<{ user_id: string }>(
+          'SELECT user_id FROM task_members WHERE task_id = $1',
+          [id],
+        );
+        const currentIds = new Set(current.map((r) => r.user_id));
+        // Existing members may be disabled accounts; only newly added people must be active.
+        await assertActiveUsers(c, members.filter((m) => !currentIds.has(m)));
+        await c.query('DELETE FROM task_members WHERE task_id = $1 AND NOT (user_id = ANY($2::uuid[]))', [id, members]);
+        await c.query(
+          'INSERT INTO task_members (task_id, user_id) SELECT $1, unnest($2::uuid[]) ON CONFLICT DO NOTHING',
+          [id, members],
+        );
+        const changed = members.length !== currentIds.size || members.some((m) => !currentIds.has(m));
+        if (changed) {
+          await logEvent(c, id, userId, 'members_changed', null, null);
+          await c.query('UPDATE tasks SET updated_at = now() WHERE id = $1', [id]);
+        }
+      }
+
+      // The acting user may have just removed themselves; return what they last saw in that case.
+      return (await this.get(userId, id, c)) ?? (await this.getUnscoped(id, c));
+    });
+  }
+
+  /** Marks an open task done on `today`. Returns null if the task isn't visible or is already done. */
+  async complete(userId: string, id: string, today: string): Promise<Task | null> {
+    return withTransaction(this.db, async (c) => {
+      const { rowCount } = await c.query(
+        `UPDATE tasks t SET status = 'done', completed_at = now(), completed_on = $3, completed_by = $1, updated_at = now()
+         WHERE t.id = $2 AND t.status = 'open' AND ${VISIBLE}`,
+        [userId, id, today],
+      );
+      if (!rowCount) return null;
+      await logEvent(c, id, userId, 'completed', null, today);
+      return this.get(userId, id, c);
+    });
   }
 
   /** Reopens a done task. If it belonged to a past day it comes back on today's list. */
-  async reopen(id: string, today: string): Promise<Task | null> {
-    const { rows } = await this.db.query<Task>(
-      `WITH updated AS (
-         UPDATE tasks SET
-           status = 'open', completed_at = NULL, completed_on = NULL, updated_at = now(),
-           scheduled_date = CASE WHEN scheduled_date < $2 THEN $2 ELSE scheduled_date END
-         WHERE id = $1 AND status = 'done'
-         RETURNING *
-       ), ev AS (
-         INSERT INTO task_events (task_id, type, to_date) SELECT id, 'reopened', scheduled_date FROM updated
-       )
-       SELECT ${COLUMNS} FROM updated`,
-      [id, today],
-    );
-    return rows[0] ?? null;
+  async reopen(userId: string, id: string, today: string): Promise<Task | null> {
+    return withTransaction(this.db, async (c) => {
+      const { rows } = await c.query<{ scheduled_date: string | null }>(
+        `UPDATE tasks t SET
+           status = 'open', completed_at = NULL, completed_on = NULL, completed_by = NULL, updated_at = now(),
+           scheduled_date = CASE WHEN t.scheduled_date < $3 THEN $3 ELSE t.scheduled_date END
+         WHERE t.id = $2 AND t.status = 'done' AND ${VISIBLE}
+         RETURNING t.scheduled_date`,
+        [userId, id, today],
+      );
+      if (!rows[0]) return null;
+      await logEvent(c, id, userId, 'reopened', null, rows[0].scheduled_date);
+      return this.get(userId, id, c);
+    });
   }
 
-  async delete(id: string): Promise<boolean> {
-    const { rowCount } = await this.db.query('DELETE FROM tasks WHERE id = $1', [id]);
-    return (rowCount ?? 0) > 0;
+  /** Only the creator may delete. Other members can leave a shared task by removing themselves. */
+  async delete(userId: string, id: string): Promise<DeleteResult> {
+    const task = await this.get(userId, id);
+    if (!task) return 'not_found';
+    if (task.createdBy !== null && task.createdBy !== userId) return 'forbidden';
+    await this.db.query('DELETE FROM tasks WHERE id = $1', [id]);
+    return 'deleted';
   }
+
+  private async select(where: string, params: unknown[], db: Queryable = this.db): Promise<Task[]> {
+    const { rows } = await db.query<Task>(`SELECT ${COLUMNS} FROM tasks t WHERE ${VISIBLE} AND ${where}`, params);
+    return rows;
+  }
+
+  private async getUnscoped(id: string, db: Queryable): Promise<Task | null> {
+    const { rows } = await db.query<Task>(`SELECT ${COLUMNS} FROM tasks t WHERE t.id = $1`, [id]);
+    return rows[0] ?? null;
+  }
+}
+
+async function assertActiveUsers(db: pg.PoolClient, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { rows } = await db.query<{ n: number }>(
+    'SELECT count(*)::int AS n FROM users WHERE id = ANY($1::uuid[]) AND NOT disabled',
+    [ids],
+  );
+  if (rows[0]!.n !== new Set(ids).size) throw new HttpError(400, 'Can only share with active users');
+}
+
+async function logEvent(
+  db: Queryable,
+  taskId: string,
+  userId: string | null,
+  type: string,
+  fromDate: string | null,
+  toDate: string | null,
+): Promise<void> {
+  await db.query(
+    'INSERT INTO task_events (task_id, user_id, type, from_date, to_date) VALUES ($1, $2, $3, $4, $5)',
+    [taskId, userId, type, fromDate, toDate],
+  );
 }

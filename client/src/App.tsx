@@ -2,7 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Navigate, Route, Routes } from 'react-router';
 import { api } from './api';
 import { Layout } from './components/Layout';
+import { AccountPage } from './pages/AccountPage';
+import { AdminPage } from './pages/AdminPage';
 import { BacklogPage } from './pages/BacklogPage';
+import { CalendarPage } from './pages/CalendarPage';
 import { DayPage } from './pages/DayPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { LoginPage } from './pages/LoginPage';
@@ -18,7 +21,10 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<DayPage />} />
         <Route path="day/:date" element={<DayPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
         <Route path="backlog" element={<BacklogPage />} />
+        <Route path="account" element={<AccountPage />} />
+        <Route path="admin" element={<AdminPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

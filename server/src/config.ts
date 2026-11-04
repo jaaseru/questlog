@@ -2,7 +2,9 @@ export interface AppConfig {
   port: number;
   databaseUrl: string;
   databaseSsl: boolean;
+  /** Only used once, to create the first user when upgrading from the single-password version. */
   appPassword: string;
+  adminUsername: string;
   sessionSecret: string;
   timezone: string;
   isProduction: boolean;
@@ -14,6 +16,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl: env.DATABASE_URL ?? '',
     databaseSsl: env.DATABASE_SSL === 'true',
     appPassword: env.APP_PASSWORD ?? '',
+    adminUsername: (env.ADMIN_USERNAME ?? 'admin').trim().toLowerCase(),
     sessionSecret: env.SESSION_SECRET ?? '',
     timezone: env.APP_TIMEZONE ?? 'UTC',
     isProduction: env.NODE_ENV === 'production',
@@ -29,7 +32,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     const urlProblem = describeDatabaseUrlProblem(config.databaseUrl);
     if (urlProblem) problems.push(urlProblem);
   }
-  if (!config.appPassword) problems.push('APP_PASSWORD is required');
+  if (!/^[a-z0-9._-]{2,32}$/.test(config.adminUsername)) {
+    problems.push('ADMIN_USERNAME must be 2-32 characters: lowercase letters, digits, ".", "_" or "-"');
+  }
   if (config.sessionSecret.length < 32) problems.push('SESSION_SECRET must be at least 32 characters');
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: config.timezone });
@@ -51,6 +56,9 @@ export function describeDatabaseUrlProblem(url: string): string | null {
       'DATABASE_URL contains an unresolved Railway reference (${{...}}). The service name inside it must match your ' +
       'database service exactly. Easiest fix: delete the variable and re-add it with "Add Reference".'
     );
+  }
+  if (/^\s*DATABASE_URL\s*=/i.test(url)) {
+    return 'DATABASE_URL value starts with "DATABASE_URL=". Put only the URL in the value field, starting with postgresql://';
   }
   if (/^\s|\s$/.test(url) || /^["']/.test(url)) {
     return 'DATABASE_URL has surrounding quotes or whitespace. Remove them so the value starts with postgresql://';
