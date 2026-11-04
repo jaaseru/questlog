@@ -25,6 +25,13 @@ export const useHistory = (from: string, to: string) =>
     placeholderData: keepPreviousData,
   });
 
+export const useCalendar = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['tasks', 'calendar', from, to],
+    queryFn: () => api.calendar(from, to),
+    placeholderData: keepPreviousData,
+  });
+
 function useTaskMutation<V>(fn: (vars: V) => Promise<unknown>) {
   const qc = useQueryClient();
   return useMutation({

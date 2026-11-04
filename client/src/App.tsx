@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { api } from './api';
 import { Layout } from './components/Layout';
 import { BacklogPage } from './pages/BacklogPage';
+import { CalendarPage } from './pages/CalendarPage';
 import { DayPage } from './pages/DayPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { LoginPage } from './pages/LoginPage';
@@ -18,6 +19,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<DayPage />} />
         <Route path="day/:date" element={<DayPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
         <Route path="backlog" element={<BacklogPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -8,6 +8,7 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 
 - **Day lists.** Every day has its own todo list. Use ‹ › to move between days. Future days take tasks as reminders. Past days read as a journal of what was finished.
 - **Automatic roll-over.** Open tasks left on a past day move onto today. They get a "↻ since …" badge, and the roll-over is logged.
+- **Calendar.** A month grid that combines the journal (completed), today, planned days and due dates. Phones show counters per day; wider screens show task titles. Tap a day to see and edit its tasks below the grid.
 - **Backlog.** Tasks with no day. Tap **Today** to pull one in.
 - **History.** Completed tasks grouped by the day they were finished.
 - **Task details.** Title, notes, priority (urgent / high / medium / low), scheduled day, due date.
@@ -15,9 +16,8 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 
 ## Roadmap
 
-1. **Calendar view.** A month grid joining the journal (completed), today's list, and future scheduled tasks.
-2. **Nightly AI review.** A scheduled job reads open tasks (age, roll-over count, due dates, priority) and flags the ones that need a follow-up. The `task_events` log already records the history it needs.
-3. Quality-of-life: drag to reorder, swipe gestures, tags/projects, search.
+1. **Nightly AI review.** A scheduled job reads open tasks (age, roll-over count, due dates, priority) and flags the ones that need a follow-up. The `task_events` log already records the history it needs.
+2. Quality-of-life: drag to reorder, swipe gestures, tags/projects, search.
 
 ## Stack
 

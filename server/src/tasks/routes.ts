@@ -6,6 +6,8 @@ import { PRIORITIES, TaskRepo } from './repo.js';
 
 const isoDate = z.string().refine(isIsoDate, 'Expected a date as YYYY-MM-DD');
 const taskId = z.uuid();
+// A month grid is at most 6 weeks; leave some room for other views.
+const MAX_CALENDAR_DAYS = 62;
 
 const createSchema = z.object({
   title: z.string().trim().min(1).max(500),
@@ -61,6 +63,16 @@ export function tasksRouter(repo: TaskRepo, scheduler: RolloverScheduler, timeZo
     const from = req.query.from ? isoDate.parse(req.query.from) : addDays(to, -29);
     if (from > to) throw new HttpError(400, '"from" must not be after "to"');
     res.json({ from, to, tasks: await repo.listCompleted(from, to) });
+  });
+
+  router.get('/calendar', async (req, res) => {
+    const from = isoDate.parse(req.query.from);
+    const to = isoDate.parse(req.query.to);
+    if (from > to) throw new HttpError(400, '"from" must not be after "to"');
+    if (addDays(from, MAX_CALENDAR_DAYS - 1) < to) {
+      throw new HttpError(400, `A calendar range can span at most ${MAX_CALENDAR_DAYS} days`);
+    }
+    res.json({ from, to, today: today(), ...(await repo.listCalendar(from, to)) });
   });
 
   router.get('/:id', async (req, res) => {

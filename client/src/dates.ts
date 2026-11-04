@@ -36,3 +36,38 @@ export function isIsoDate(value: string): boolean {
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
+
+/** 'YYYY-MM' → 'YYYY-MM' shifted by `months`. */
+export function addMonths(month: string, months: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(Date.UTC(y!, m! - 1 + months, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+export function isIsoMonth(value: string): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+/** Days shown in a Monday-first month grid: whole weeks covering the month (5 or 6 rows). */
+export function monthGrid(month: string): string[] {
+  const first = `${month}-01`;
+  const weekday = (asUtc(first).getUTCDay() + 6) % 7; // Monday = 0
+  const start = addDays(first, -weekday);
+  const last = addDays(`${addMonths(month, 1)}-01`, -1);
+  const days: string[] = [];
+  for (let d = start; d <= last || days.length % 7 !== 0; d = addDays(d, 1)) days.push(d);
+  return days;
+}
+
+/** Short weekday names, Monday first, in the user's locale. */
+export function weekdayNames(): string[] {
+  // 2024-01-01 was a Monday.
+  return Array.from({ length: 7 }, (_, i) =>
+    asUtc(addDays('2024-01-01', i)).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }),
+  );
+}
+
+/** e.g. "November 2026" */
+export function monthLabel(month: string): string {
+  return asUtc(`${month}-01`).toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}

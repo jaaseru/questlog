@@ -127,6 +127,34 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
     });
   });
 
+  describe('calendar', () => {
+    it('returns completed, planned and due tasks within the range', async () => {
+      const tomorrow = addDays(today, 1);
+      const nextWeek = addDays(today, 7);
+      const { body: finished } = await agent.post('/api/tasks').send({ title: 'finished' }).expect(201);
+      await agent.post(`/api/tasks/${finished.id}/complete`).expect(200);
+      const { body: planned } = await agent.post('/api/tasks').send({ title: 'planned', scheduledDate: tomorrow }).expect(201);
+      const { body: deadline } = await agent
+        .post('/api/tasks')
+        .send({ title: 'deadline', scheduledDate: null, dueDate: nextWeek })
+        .expect(201);
+      await agent.post('/api/tasks').send({ title: 'out of range', scheduledDate: addDays(today, 40) }).expect(201);
+
+      const { body } = await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 13)}`).expect(200);
+      const ids = (list: { id: string }[]) => list.map((t) => t.id);
+      expect(ids(body.done)).toEqual([finished.id]);
+      expect(ids(body.open)).toEqual([planned.id]);
+      expect(ids(body.due)).toEqual([deadline.id]);
+    });
+
+    it('rejects missing, inverted and oversized ranges', async () => {
+      await agent.get('/api/tasks/calendar').expect(400);
+      await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, -1)}`).expect(400);
+      await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 62)}`).expect(400);
+      await agent.get(`/api/tasks/calendar?from=${today}&to=${addDays(today, 61)}`).expect(200);
+    });
+  });
+
   describe('rollover', () => {
     async function insertOpenTask(title: string, scheduledDate: string | null) {
       const { rows } = await db.query(

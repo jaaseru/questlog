@@ -37,6 +37,11 @@ export const api = {
   history: (from: string, to: string) =>
     request<{ from: string; to: string; tasks: Task[] }>(`/tasks/history?from=${from}&to=${to}`),
 
+  calendar: (from: string, to: string) =>
+    request<{ from: string; to: string; today: string; done: Task[]; open: Task[]; due: Task[] }>(
+      `/tasks/calendar?from=${from}&to=${to}`,
+    ),
+
   create: (input: TaskInput) => request<Task>('/tasks', json('POST', input)),
   update: (id: string, patch: Partial<TaskInput>) => request<Task>(`/tasks/${id}`, json('PATCH', patch)),
   complete: (id: string) => request<Task>(`/tasks/${id}/complete`, json('POST')),

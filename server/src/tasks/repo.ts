@@ -81,6 +81,33 @@ export class TaskRepo {
     return rows;
   }
 
+  /**
+   * Everything a calendar needs for a date range (inclusive):
+   * - done: tasks completed in the range (the journal)
+   * - open: open tasks on a day list in the range (today and planned days)
+   * - due: open tasks with a due date in the range (deadline markers)
+   */
+  async listCalendar(from: string, to: string): Promise<{ done: Task[]; open: Task[]; due: Task[] }> {
+    const [done, open, due] = await Promise.all([
+      this.db.query<Task>(
+        `SELECT ${COLUMNS} FROM tasks WHERE status = 'done' AND completed_on BETWEEN $1 AND $2
+         ORDER BY completed_on, completed_at`,
+        [from, to],
+      ),
+      this.db.query<Task>(
+        `SELECT ${COLUMNS} FROM tasks WHERE status = 'open' AND scheduled_date BETWEEN $1 AND $2
+         ORDER BY scheduled_date, ${BY_PRIORITY}`,
+        [from, to],
+      ),
+      this.db.query<Task>(
+        `SELECT ${COLUMNS} FROM tasks WHERE status = 'open' AND due_date BETWEEN $1 AND $2
+         ORDER BY due_date, ${BY_PRIORITY}`,
+        [from, to],
+      ),
+    ]);
+    return { done: done.rows, open: open.rows, due: due.rows };
+  }
+
   async get(id: string): Promise<Task | null> {
     const { rows } = await this.db.query<Task>(`SELECT ${COLUMNS} FROM tasks WHERE id = $1`, [id]);
     return rows[0] ?? null;

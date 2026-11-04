@@ -681,3 +681,237 @@ textarea {
   font-size: 1.5rem;
   margin-bottom: 8px;
 }
+
+/* ---------- Calendar ---------- */
+
+.page--wide {
+  max-width: 960px;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.calendar__weekday {
+  padding: 4px 0;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.calendar__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 6px 2px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.calendar__day:hover {
+  border-color: var(--border);
+}
+
+.calendar__day.is-outside {
+  background: transparent;
+  opacity: 0.45;
+}
+
+.calendar__day.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.calendar__num {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar__day.is-past .calendar__num {
+  color: var(--muted);
+}
+
+.calendar__day.is-today .calendar__num {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.calendar__dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  min-height: 16px;
+}
+
+.count {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.count--done {
+  color: var(--low);
+  background: color-mix(in srgb, var(--low) 16%, transparent);
+}
+
+.count--open {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot--done {
+  background: var(--low);
+}
+.dot--open {
+  background: var(--accent);
+}
+.dot--due {
+  background: var(--danger);
+}
+
+.calendar__titles {
+  display: none;
+}
+
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 12px 0 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.agenda {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.agenda__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.agenda__header h2 {
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.agenda__header .btn {
+  text-decoration: none;
+}
+
+/* Wider screens: show task titles in the cells instead of counters. */
+@media (min-width: 800px) {
+  .calendar {
+    gap: 6px;
+  }
+
+  .calendar__day {
+    align-items: stretch;
+    min-height: 112px;
+    padding: 6px;
+  }
+
+  .calendar__num {
+    align-self: flex-start;
+  }
+
+  .calendar__dots,
+  .legend {
+    display: none;
+  }
+
+  .agenda {
+    margin-top: 24px;
+  }
+
+  .calendar__titles {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .calendar__title {
+    overflow: hidden;
+    padding: 1px 6px;
+    border-left: 3px solid var(--p);
+    border-radius: 4px;
+    background: var(--surface-2);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .calendar__title--done {
+    border-left-color: var(--border);
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+
+  .calendar__title--due {
+    border-left-color: var(--danger);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+
+  .calendar__title--due::before {
+    content: 'Due: ';
+    font-weight: 600;
+  }
+
+  .calendar__more {
+    padding-left: 6px;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+}

@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { api } from '../api';
-import { BacklogIcon, HistoryIcon, LogoutIcon, TodayIcon } from './icons';
+import { BacklogIcon, CalendarIcon, HistoryIcon, LogoutIcon, TodayIcon } from './icons';
 
 const links = [
   { to: '/', label: 'Today', icon: <TodayIcon />, end: false },
+  { to: '/calendar', label: 'Calendar', icon: <CalendarIcon />, end: true },
   { to: '/backlog', label: 'Backlog', icon: <BacklogIcon />, end: true },
   { to: '/history', label: 'History', icon: <HistoryIcon />, end: true },
 ];

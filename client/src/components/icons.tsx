@@ -18,6 +18,12 @@ export const TodayIcon = () => (
     <path d="M3 9h18M8 2v4M16 2v4M9 15l2 2 4-4" />
   </svg>
 );
+export const CalendarIcon = () => (
+  <svg {...base}>
+    <rect x="3" y="4" width="18" height="17" rx="3" />
+    <path d="M3 9h18M8 2v4M16 2v4M7.5 13h.01M12 13h.01M16.5 13h.01M7.5 17h.01M12 17h.01" />
+  </svg>
+);
 export const BacklogIcon = () => (
   <svg {...base}>
     <path d="M4 6h16M4 12h16M4 18h10" />
