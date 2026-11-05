@@ -17,7 +17,7 @@ These give the most value for the effort, given what the app already has.
 | # | Feature | Size | Why now |
 | --- | --- | --- | --- |
 | 1 | **Nightly AI review** | L | The original goal. `task_events` already records age, roll-overs and reschedules, which are the signals it needs. |
-| 2 | **Automatic tests on GitHub** | S | Runs the 66 tests on every pull request, so a broken change can't reach `main` unnoticed. |
+| 2 | **Automatic tests on GitHub** | S | Runs the test suite on every pull request, so a broken change can't reach `main` unnoticed. |
 | 3 | **Two-factor sign-in for the admin** | M | Your account can manage everyone else's; a second factor protects it if your password leaks. |
 | 4 | **Push reminders** | L | Makes due dates and future todos actually reach you, instead of waiting for you to open the app. |
 
