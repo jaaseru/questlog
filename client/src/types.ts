@@ -39,6 +39,8 @@ export interface TaskRepeat {
   /** ISO weekdays (1 = Monday … 7 = Sunday); weekly only. Empty = the task's own weekday. */
   weekdays: number[];
   kind: RepeatKind;
+  /** Last day an occurrence may fall on (inclusive); null = forever. */
+  until: string | null;
 }
 
 /** A future occurrence of a repeating task; becomes a real task on its day. */

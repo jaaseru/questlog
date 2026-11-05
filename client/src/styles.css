@@ -1350,6 +1350,10 @@ code {
   accent-color: var(--accent);
 }
 
+.repeat__until .toggle {
+  min-height: 44px;
+}
+
 .repeat__summary {
   line-height: 1.45;
 }

@@ -30,6 +30,7 @@ export function RepeatPicker({ value, onChange, anchor }: Props) {
       every: value?.every ?? 1,
       weekdays: frequency === 'weekly' ? [isoWeekday(anchor)] : [],
       kind: value?.kind ?? 'fixed',
+      until: value?.until ?? null,
     });
   };
 
@@ -95,6 +96,29 @@ export function RepeatPicker({ value, onChange, anchor }: Props) {
       )}
 
       {value && (
+        <div className="row repeat__until">
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={value.until !== null}
+              onChange={(e) => onChange({ ...value, until: e.target.checked ? defaultUntil(anchor, value) : null })}
+            />
+            Until
+          </label>
+          {value.until !== null && (
+            <input
+              type="date"
+              value={value.until}
+              min={anchor}
+              onChange={(e) => onChange({ ...value, until: e.target.value || null })}
+              aria-label="Repeat until"
+              required
+            />
+          )}
+        </div>
+      )}
+
+      {value && (
         <>
           <div className="kinds" role="radiogroup" aria-label="If it isn't done">
             {KINDS.map((k) => (
@@ -122,4 +146,15 @@ export function RepeatPicker({ value, onChange, anchor }: Props) {
       )}
     </fieldset>
   );
+}
+
+/** A sensible first guess for an end date: a handful of periods ahead. */
+function defaultUntil(anchor: string, value: TaskRepeat): string {
+  const d = new Date(`${anchor}T00:00:00Z`);
+  const n = value.every;
+  if (value.frequency === 'daily') d.setUTCDate(d.getUTCDate() + 13 * n);
+  else if (value.frequency === 'weekly') d.setUTCDate(d.getUTCDate() + 7 * 8 * n);
+  else if (value.frequency === 'monthly') d.setUTCMonth(d.getUTCMonth() + 6 * n);
+  else d.setUTCFullYear(d.getUTCFullYear() + 3 * n);
+  return d.toISOString().slice(0, 10);
 }

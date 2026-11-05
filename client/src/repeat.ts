@@ -2,16 +2,17 @@ import type { RepeatKind, TaskRepeat } from './types';
 
 const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+// Routine = optional; chore = mandatory (fixed or flexible day).
 export const KIND_LABEL: Record<RepeatKind, string> = {
-  optional: 'Optional',
-  fixed: 'Mandatory · fixed day',
-  variable: 'Mandatory · flexible',
+  optional: 'Routine',
+  fixed: 'Chore · fixed day',
+  variable: 'Chore · flexible',
 };
 
 export const KIND_SHORT: Record<RepeatKind, string> = {
-  optional: 'optional',
-  fixed: 'fixed',
-  variable: 'flexible',
+  optional: 'routine',
+  fixed: 'chore',
+  variable: 'flexible chore',
 };
 
 export const KIND_HELP: Record<RepeatKind, string> = {
@@ -32,7 +33,22 @@ export function weekdayShort(day: number): string {
 }
 
 /** e.g. "Daily", "Every 2 weeks on Mon, Thu", "Monthly on the 15th", "Yearly on 4 November". */
-export function describeRepeat(r: Pick<TaskRepeat, 'frequency' | 'every' | 'weekdays'>, anchor?: string | null): string {
+export function describeRepeat(
+  r: Pick<TaskRepeat, 'frequency' | 'every' | 'weekdays'> & { until?: string | null },
+  anchor?: string | null,
+): string {
+  const rule = describeRule(r, anchor);
+  if (!r.until) return rule;
+  const end = new Date(`${r.until}T00:00:00Z`).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+  return `${rule}, until ${end}`;
+}
+
+function describeRule(r: Pick<TaskRepeat, 'frequency' | 'every' | 'weekdays'>, anchor?: string | null): string {
   const unit = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[r.frequency];
   const plain = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' }[r.frequency];
   const base = r.every === 1 ? plain : `Every ${r.every} ${unit}s`;
@@ -51,7 +67,7 @@ export function describeRepeat(r: Pick<TaskRepeat, 'frequency' | 'every' | 'week
 
 /** Short label for chips: "Weekly", "Every 2 days". */
 export function repeatChip(r: Pick<TaskRepeat, 'frequency' | 'every'>): string {
-  return describeRepeat({ ...r, weekdays: [] });
+  return describeRule({ ...r, weekdays: [] });
 }
 
 export function sameRepeat(a: TaskRepeat | null, b: TaskRepeat | null): boolean {
@@ -60,6 +76,7 @@ export function sameRepeat(a: TaskRepeat | null, b: TaskRepeat | null): boolean 
     a.frequency === b.frequency &&
     a.every === b.every &&
     a.kind === b.kind &&
+    a.until === b.until &&
     a.weekdays.length === b.weekdays.length &&
     [...a.weekdays].sort().every((d, i) => d === [...b.weekdays].sort()[i])
   );

@@ -86,7 +86,7 @@ describe.skipIf(!databaseUrl)('repeating tasks (needs TEST_DATABASE_URL)', () =>
     it('turns a task into the first occurrence and reports the rule', async () => {
       const task = await repeating('Standup', { frequency: 'daily', kind: 'optional' });
       expect(task.seriesId).toEqual(expect.any(String));
-      expect(task.repeat).toEqual({ frequency: 'daily', every: 1, weekdays: [], kind: 'optional' });
+      expect(task.repeat).toEqual({ frequency: 'daily', every: 1, weekdays: [], kind: 'optional', until: null });
       expect(await occurrences(task.seriesId)).toEqual([
         expect.objectContaining({ occurrence_date: T, scheduled_date: T, status: 'open' }),
       ]);
@@ -207,6 +207,56 @@ describe.skipIf(!databaseUrl)('repeating tasks (needs TEST_DATABASE_URL)', () =>
       expect(await occurrences(seriesId)).toHaveLength(0);
       await runDay(day(9));
       expect((await occurrences(seriesId)).map((o) => o.occurrence_date)).toEqual([day(9)]);
+    });
+  });
+
+  describe('repeat until', () => {
+    it('stops creating and previewing occurrences after the end date', async () => {
+      const { seriesId } = await repeating('Antibiotics', { frequency: 'daily', kind: 'optional', until: day(2) });
+      expect((await series.upcoming(alice.id, day(1), day(10), T)).map((u) => u.date)).toEqual([day(1), day(2)]);
+      for (let n = 1; n <= 5; n++) await runDay(day(n));
+      expect((await occurrences(seriesId)).map((o) => [o.occurrence_date, o.status])).toEqual([
+        [T, 'missed'],
+        [day(1), 'missed'],
+        [day(2), 'missed'],
+      ]);
+    });
+
+    it('lets the last occurrence of a fixed chore roll over until done', async () => {
+      const { seriesId } = await repeating('Move out', { frequency: 'weekly', kind: 'fixed', until: day(7) });
+      for (let n = 1; n <= 10; n++) await runDay(day(n));
+      expect((await occurrences(seriesId)).map((o) => [o.occurrence_date, o.scheduled_date, o.status])).toEqual([
+        [T, day(6), 'missed'],
+        [day(7), day(10), 'open'],
+      ]);
+    });
+
+    it('ends a flexible chore when the next one would fall after the end date', async () => {
+      const { id, seriesId } = await repeating('Physio', { frequency: 'weekly', kind: 'variable', until: day(10) });
+      await runDay(day(2));
+      await tasks.complete(alice.id, id, day(2)); // next: day 9
+      await runDay(day(9));
+      const second = (await occurrences(seriesId)).find((o) => o.occurrence_date === day(9))!;
+      await tasks.complete(alice.id, second.id, day(9)); // next would be day 16 > day 10
+      expect(await series.upcoming(alice.id, day(10), day(30), day(9))).toEqual([]);
+      await runDay(day(16));
+      expect(await occurrences(seriesId)).toHaveLength(2);
+    });
+
+    it("rejects an end date before the task's day, and can be cleared", async () => {
+      const { body: task } = await asAlice.post('/api/tasks').send({ title: 'x', scheduledDate: day(3) }).expect(201);
+      await asAlice.put(`/api/tasks/${task.id}/repeat`).send({ frequency: 'daily', kind: 'fixed', until: day(2) }).expect(400);
+      await asAlice.put(`/api/tasks/${task.id}/repeat`).send({ frequency: 'daily', kind: 'fixed', until: 'soon' }).expect(400);
+      const { body: limited } = await asAlice
+        .put(`/api/tasks/${task.id}/repeat`)
+        .send({ frequency: 'daily', kind: 'fixed', until: day(3) })
+        .expect(200);
+      expect(limited.repeat.until).toBe(day(3));
+      const { body: forever } = await asAlice
+        .put(`/api/tasks/${task.id}/repeat`)
+        .send({ frequency: 'daily', kind: 'fixed', until: null })
+        .expect(200);
+      expect(forever.repeat.until).toBeNull();
     });
   });
 

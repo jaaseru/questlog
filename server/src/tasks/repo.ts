@@ -13,6 +13,7 @@ export interface TaskRepeat {
   every: number;
   weekdays: number[];
   kind: RepeatKind;
+  until: string | null;
 }
 
 export interface Task {
@@ -64,7 +65,7 @@ const COLUMNS = `
   ARRAY(SELECT m.user_id FROM task_members m WHERE m.task_id = t.id ORDER BY m.added_at, m.user_id) AS "memberIds",
   t.series_id AS "seriesId",
   t.occurrence_date AS "occurrenceDate",
-  (SELECT json_build_object('frequency', s.frequency, 'every', s.repeat_every, 'weekdays', s.weekdays, 'kind', s.kind)
+  (SELECT json_build_object('frequency', s.frequency, 'every', s.repeat_every, 'weekdays', s.weekdays, 'kind', s.kind, 'until', s.end_date)
      FROM task_series s WHERE s.id = t.series_id AND s.active) AS "repeat",
   t.created_at AS "createdAt",
   t.updated_at AS "updatedAt"`;

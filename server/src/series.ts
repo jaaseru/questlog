@@ -19,10 +19,13 @@ export interface SeriesRow {
   memberIds: string[];
   createdBy: string | null;
   active: boolean;
+  /** Last day an occurrence may fall on (inclusive), or null to repeat forever. */
+  until: string | null;
 }
 
 export interface RepeatInput extends RepeatRule {
   kind: RepeatKind;
+  until?: string | null;
 }
 
 /** A future occurrence that doesn't exist as a task yet (shown as a preview). */
@@ -42,10 +45,15 @@ export interface UpcomingOccurrence {
 const SERIES_COLUMNS = `
   id, title, notes, priority, frequency, repeat_every AS every, weekdays, kind,
   start_date AS "startDate", generated_through AS "generatedThrough", next_date AS "nextDate",
-  member_ids AS "memberIds", created_by AS "createdBy", active`;
+  member_ids AS "memberIds", created_by AS "createdBy", active, end_date AS "until"`;
 
 /** Catch-up limit if the server was down for a long time: older occurrences are just skipped. */
 const MAX_CATCH_UP = 62;
+
+/** The earlier of two dates, treating null as "no limit". */
+function capAt(date: string, until: string | null): string {
+  return until && until < date ? until : date;
+}
 
 function schedule(s: SeriesRow): Schedule {
   return { frequency: s.frequency, every: s.every, weekdays: s.weekdays, startDate: s.startDate };
@@ -113,7 +121,7 @@ async function processOne(c: pg.PoolClient, s: SeriesRow, today: string) {
   if (s.kind === 'variable') {
     for (const t of overdue) await rollTo(c, t.id, t.scheduled_date, today);
     const { rows: open } = await c.query('SELECT 1 FROM tasks WHERE series_id = $1 AND status = $2 LIMIT 1', [s.id, 'open']);
-    if (open.length === 0 && s.nextDate && s.nextDate <= today) {
+    if (open.length === 0 && s.nextDate && s.nextDate <= today && (!s.until || s.nextDate <= s.until)) {
       // If it came due while nobody was around, it starts on today's list.
       await createOccurrence(c, s, s.nextDate, today);
     }
@@ -123,7 +131,7 @@ async function processOne(c: pg.PoolClient, s: SeriesRow, today: string) {
   // Fixed and optional: create every occurrence date that has arrived since the last run.
   if (s.generatedThrough < today) {
     const from = addDays(s.generatedThrough, 1);
-    const dates = occurrencesBetween(schedule(s), from, today).slice(-MAX_CATCH_UP);
+    const dates = from <= capAt(today, s.until) ? occurrencesBetween(schedule(s), from, capAt(today, s.until)).slice(-MAX_CATCH_UP) : [];
     for (const d of dates) await createOccurrence(c, s, d, d);
     await c.query('UPDATE task_series SET generated_through = $2 WHERE id = $1', [s.id, today]);
   }
@@ -180,10 +188,14 @@ export class SeriesRepo {
    */
   async setRepeat(userId: string, taskId: string, input: RepeatInput): Promise<void> {
     const rule = validateRepeat(input);
+    const until = input.until ?? null;
     await withTransaction(this.db, async (c) => {
       const task = await this.visibleTask(c, userId, taskId);
       if (task.status !== 'open') throw new HttpError(400, 'Only open tasks can be set to repeat');
       if (!task.scheduled_date) throw new HttpError(400, 'Put the task on a day before making it repeat');
+      if (until && until < task.scheduled_date) {
+        throw new HttpError(400, '"Repeat until" can\'t be before the task\'s day');
+      }
       const members = (
         await c.query<{ user_id: string }>('SELECT user_id FROM task_members WHERE task_id = $1', [taskId])
       ).rows.map((r) => r.user_id);
@@ -194,17 +206,17 @@ export class SeriesRepo {
         await c.query(
           `UPDATE task_series SET frequency = $2, repeat_every = $3, weekdays = $4, kind = $5,
              start_date = $6, generated_through = GREATEST(generated_through, $6), next_date = NULL,
-             title = $7, notes = $8, priority = $9, member_ids = $10, updated_at = now()
+             title = $7, notes = $8, priority = $9, member_ids = $10, end_date = $11, updated_at = now()
            WHERE id = $1`,
-          [existing.id, rule.frequency, rule.every, rule.weekdays, rule.kind, anchor, task.title, task.notes, task.priority, members],
+          [existing.id, rule.frequency, rule.every, rule.weekdays, rule.kind, anchor, task.title, task.notes, task.priority, members, until],
         );
         await c.query('UPDATE tasks SET occurrence_date = COALESCE(occurrence_date, $2) WHERE id = $1', [taskId, anchor]);
       } else {
         const { rows } = await c.query<{ id: string }>(
           `INSERT INTO task_series (title, notes, priority, frequency, repeat_every, weekdays, kind,
-             start_date, generated_through, member_ids, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10) RETURNING id`,
-          [task.title, task.notes, task.priority, rule.frequency, rule.every, rule.weekdays, rule.kind, anchor, members, userId],
+             start_date, generated_through, member_ids, created_by, end_date)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11) RETURNING id`,
+          [task.title, task.notes, task.priority, rule.frequency, rule.every, rule.weekdays, rule.kind, anchor, members, userId, until],
         );
         await c.query('UPDATE tasks SET series_id = $2, occurrence_date = $3, updated_at = now() WHERE id = $1', [
           taskId,
@@ -238,15 +250,20 @@ export class SeriesRepo {
 
   /** Flexible series: the next one is due one period after this completion (or skip). */
   async scheduleNextFlexible(c: Queryable, taskId: string, fromDate: string): Promise<void> {
-    const { rows } = await c.query<{ id: string } & RepeatRule>(
-      `SELECT s.id, s.frequency, s.repeat_every AS every, s.weekdays
+    const { rows } = await c.query<{ id: string; until: string | null } & RepeatRule>(
+      `SELECT s.id, s.frequency, s.repeat_every AS every, s.weekdays, s.end_date AS until
        FROM task_series s JOIN tasks t ON t.series_id = s.id
        WHERE t.id = $1 AND s.active AND s.kind = 'variable'`,
       [taskId],
     );
     const s = rows[0];
     if (!s) return;
-    await c.query('UPDATE task_series SET next_date = $2, updated_at = now() WHERE id = $1', [s.id, addPeriod(s, fromDate)]);
+    const next = addPeriod(s, fromDate);
+    // Past the end date: the series is finished.
+    await c.query('UPDATE task_series SET next_date = $2, updated_at = now() WHERE id = $1', [
+      s.id,
+      s.until && next > s.until ? null : next,
+    ]);
   }
 
   /** Future occurrences (after today) of the user's active series within [from, to]. */
@@ -261,6 +278,8 @@ export class SeriesRepo {
     );
     const out: UpcomingOccurrence[] = [];
     for (const s of series) {
+      const end = capAt(to, s.until);
+      if (end < start) continue;
       const base = {
         seriesId: s.id,
         title: s.title,
@@ -273,12 +292,12 @@ export class SeriesRepo {
       if (s.kind === 'variable') {
         // Estimated: assumes the open occurrence is done today (or on its future day).
         let d = s.openDate ? addPeriod(s, s.openDate > today ? s.openDate : today) : s.nextDate;
-        for (let i = 0; d && d <= to && i < 400; i++, d = addPeriod(s, d)) {
+        for (let i = 0; d && d <= end && i < 400; i++, d = addPeriod(s, d)) {
           if (d >= start) out.push({ ...base, date: d, estimated: s.openDate !== null });
         }
       } else {
         const after = addDays(s.generatedThrough, 1);
-        for (const d of occurrencesBetween(schedule(s), after > start ? after : start, to)) {
+        for (const d of occurrencesBetween(schedule(s), after > start ? after : start, end)) {
           out.push({ ...base, date: d, estimated: false });
         }
       }

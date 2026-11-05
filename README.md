@@ -9,7 +9,7 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 - **Day lists.** Every day has its own todo list. Use ‹ › to move between days. Future days take tasks as reminders. Past days read as a journal of what was finished.
 - **Automatic roll-over.** Open tasks left on a past day move onto today. They get a "↻ since …" badge, and the roll-over is logged.
 - **Calendar.** A month grid that combines the journal (completed), today, planned days and due dates. Phones show counters per day; wider screens show task titles. Tap a day to see and edit its tasks below the grid.
-- **Repeating tasks.** Daily, weekly (every N weeks, or on chosen weekdays such as Mon and Thu), monthly or yearly. Each series is *optional* (not done on its day → missed), *mandatory, fixed day* (rolls over until the next one is due, then missed) or *mandatory, flexible* (rolls over, and the next one is one period after completion). Future occurrences show as previews; missed ones stay in the journal and can still be completed. See [How repeating tasks work](#how-repeating-tasks-work).
+- **Repeating tasks.** Daily, weekly (every N weeks, or on chosen weekdays such as Mon and Thu), monthly or yearly. Each series is a **routine** (not done on its day → missed), a **chore with a fixed day** (rolls over until the next one is due, then missed) or a **flexible chore** (rolls over, and the next one is one period after completion). Series can end on a chosen date. Future occurrences show as previews; missed ones stay in the journal and can still be completed. See [How repeating tasks work](#how-repeating-tasks-work).
 - **Backlog.** Tasks with no day. Tap **Today** to pull one in.
 - **History.** Completed tasks grouped by the day they were finished.
 - **Task details.** Title, notes, priority (urgent / high / medium / low), scheduled day, due date.
@@ -136,10 +136,11 @@ Open a task that's on a day, choose **Repeat**, and pick how often and what happ
 
 | Class | Not done on its day… | Next occurrence |
 | --- | --- | --- |
-| **Optional** | Marked **missed** (stays in that day's journal) | On schedule |
-| **Mandatory · fixed day** | Moves to the next day, every day, until the next occurrence is due; then the old one is marked **missed** | On schedule; dates never move |
-| **Mandatory · flexible** | Moves to the next day until done | One full period after the day it's completed; the whole series shifts. Only one weekday can be chosen. |
+| **Routine** | Marked **missed** (stays in that day's journal) | On schedule |
+| **Chore · fixed day** | Moves to the next day, every day, until the next occurrence is due; then the old one is marked **missed** | On schedule; dates never move |
+| **Chore · flexible** | Moves to the next day until done | One full period after the day it's completed; the whole series shifts. Only one weekday can be chosen. |
 
+- **Until** (optional) sets the last day an occurrence may fall on. After it, nothing new is created; a chore's last occurrence still rolls over until it's done.
 - Occurrences become real tasks on their day (in `APP_TIMEZONE`). Until then the calendar and future day pages show them as dashed previews; a flexible series' previews are marked *estimated* while the current one is open.
 - Changing an occurrence's title, notes, priority or who it's shared with also changes future occurrences.
 - Deleting an occurrence removes just that one. For a flexible series it counts as skipping: the next one is a period from today.

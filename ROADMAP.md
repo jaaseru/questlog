@@ -108,4 +108,4 @@ These give the most value for the effort, given what the app already has.
 - Multiple users, private and shared tasks
 - Admin page, account page, revocable sessions, sign-in throttling, audit log
 - Week numbers in the calendar and day header
-- Repeating tasks: daily/weekly/monthly/yearly, optional / mandatory fixed / mandatory flexible, missed tracking
+- Repeating tasks: daily/weekly/monthly/yearly, routines and chores (fixed or flexible day), repeat until, missed tracking

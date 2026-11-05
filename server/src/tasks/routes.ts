@@ -29,6 +29,8 @@ const repeatSchema = z
     every: z.number().int().min(1).max(365).default(1),
     weekdays: z.array(z.number().int().min(1).max(7)).max(7).default([]),
     kind: z.enum(KINDS),
+    // Last day an occurrence may fall on; null or omitted = forever.
+    until: isoDate.nullable().default(null),
   })
   .strict();
 
