@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { longDate } from '../dates';
-import { useDeleteTask, useMe, useToggleTask, useUpdateTask, useUsers } from '../queries';
+import { useDeleteTask, useMe, useSetRepeat, useToggleTask, useUpdateTask, useUsers } from '../queries';
+import { describeRepeat, KIND_LABEL, sameRepeat } from '../repeat';
+import { RepeatPicker } from './RepeatPicker';
 import { SharePicker } from './SharePicker';
-import { PRIORITIES, type Priority, type Task, type TaskInput } from '../types';
+import { PRIORITIES, type Priority, type Task, type TaskInput, type TaskRepeat } from '../types';
 
 interface Props {
   task: Task;
@@ -18,6 +20,7 @@ export function TaskEditor({ task, today, onClose }: Props) {
   const [inBacklog, setInBacklog] = useState(task.scheduledDate === null);
   const [scheduledDate, setScheduledDate] = useState(task.scheduledDate ?? today);
   const [dueDate, setDueDate] = useState(task.dueDate ?? '');
+  const [repeat, setRepeat] = useState<TaskRepeat | null>(task.repeat);
   const me = useMe();
   const { users, byId } = useUsers();
   const [shareWith, setShareWith] = useState(task.memberIds.filter((id) => id !== me.id));
@@ -32,8 +35,10 @@ export function TaskEditor({ task, today, onClose }: Props) {
   const update = useUpdateTask();
   const remove = useDeleteTask();
   const toggle = useToggleTask();
+  const repeatMutation = useSetRepeat();
   const isOpen = task.status === 'open';
-  const error = update.error ?? remove.error ?? toggle.error;
+  const error = update.error ?? remove.error ?? toggle.error ?? repeatMutation.error;
+  const saving = update.isPending || repeatMutation.isPending;
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -54,8 +59,14 @@ export function TaskEditor({ task, today, onClose }: Props) {
     const nextMembers = [me.id, ...shareWith];
     if (!sameSet(nextMembers, task.memberIds)) patch.memberIds = nextMembers;
 
-    if (Object.keys(patch).length === 0) return onClose();
-    update.mutate({ id: task.id, patch }, { onSuccess: onClose });
+    const repeatChanged = !sameRepeat(repeat, task.repeat);
+    if (Object.keys(patch).length === 0 && !repeatChanged) return onClose();
+
+    // Save the task first (its day anchors the repeat), then the repeat rule.
+    const saveRepeat = () =>
+      repeatChanged ? repeatMutation.mutate({ id: task.id, repeat }, { onSuccess: onClose }) : onClose();
+    if (Object.keys(patch).length === 0) return saveRepeat();
+    update.mutate({ id: task.id, patch }, { onSuccess: saveRepeat });
   };
 
   const leave = () => {
@@ -129,8 +140,35 @@ export function TaskEditor({ task, today, onClose }: Props) {
               )}
             </div>
           </fieldset>
+        ) : task.status === 'missed' ? (
+          <p className="muted">
+            Missed on {task.scheduledDate && longDate(task.scheduledDate, today)}. You can still complete it.
+          </p>
         ) : (
           <p className="muted">Completed {task.completedOn && longDate(task.completedOn, today)}</p>
+        )}
+
+        {isOpen && !inBacklog ? (
+          <RepeatPicker value={repeat} onChange={setRepeat} anchor={scheduledDate} />
+        ) : (
+          task.repeat && (
+            <fieldset className="field">
+              <legend>Repeat</legend>
+              <div className="row">
+                <span className="muted">
+                  {describeRepeat(task.repeat, task.occurrenceDate)} · {KIND_LABEL[task.repeat.kind]}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--small"
+                  onClick={() => repeatMutation.mutate({ id: task.id, repeat: null }, { onSuccess: onClose })}
+                  disabled={repeatMutation.isPending}
+                >
+                  Stop repeating
+                </button>
+              </div>
+            </fieldset>
+          )
         )}
 
         {people.length > 0 && (
@@ -172,9 +210,9 @@ export function TaskEditor({ task, today, onClose }: Props) {
             onClick={() => toggle.mutate(task, { onSuccess: onClose })}
             disabled={toggle.isPending}
           >
-            {isOpen ? 'Complete' : 'Reopen'}
+            {task.status === 'done' ? 'Reopen' : 'Complete'}
           </button>
-          <button type="submit" className="btn btn--primary" disabled={!title.trim() || update.isPending}>
+          <button type="submit" className="btn btn--primary" disabled={!title.trim() || saving}>
             Save
           </button>
         </div>

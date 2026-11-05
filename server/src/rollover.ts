@@ -1,5 +1,6 @@
 import type { Db } from './db.js';
 import { todayIn } from './dates.js';
+import { SeriesRepo } from './series.js';
 
 /**
  * Moves every open task scheduled before `today` onto `today`.
@@ -11,6 +12,8 @@ export async function rolloverTasks(db: Db, today: string): Promise<number> {
     `WITH stale AS (
        SELECT id, scheduled_date FROM tasks
        WHERE status = 'open' AND scheduled_date < $1
+         -- Occurrences of active repeating series follow their own rules (see series.ts).
+         AND NOT EXISTS (SELECT 1 FROM task_series s WHERE s.id = tasks.series_id AND s.active)
        FOR UPDATE
      ),
      moved AS (
@@ -40,6 +43,7 @@ export function createRolloverScheduler(
   log: (msg: string) => void = () => {},
   clock: () => Date = () => new Date(),
 ): RolloverScheduler {
+  const series = new SeriesRepo(db);
   let lastRunFor: string | null = null;
   let inFlight: Promise<void> | null = null;
   let timer: NodeJS.Timeout | null = null;
@@ -51,6 +55,7 @@ export function createRolloverScheduler(
     inFlight = (async () => {
       try {
         const moved = await rolloverTasks(db, today);
+        await series.processAll(today);
         lastRunFor = today;
         if (moved > 0) log(`Rolled over ${moved} open task(s) to ${today}`);
       } finally {

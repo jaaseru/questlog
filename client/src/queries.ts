@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api } from './api';
-import type { Task, TaskInput, User } from './types';
+import type { Task, TaskInput, TaskRepeat, User } from './types';
 
 /** The signed-in user. Only call below the login gate in App. */
 export function useMe(): User {
@@ -58,5 +58,11 @@ export const useCreateTask = () => useTaskMutation((input: TaskInput) => api.cre
 export const useUpdateTask = () =>
   useTaskMutation(({ id, patch }: { id: string; patch: Partial<TaskInput> }) => api.update(id, patch));
 export const useDeleteTask = () => useTaskMutation((id: string) => api.remove(id));
+// Open and missed tasks complete; done ones reopen.
 export const useToggleTask = () =>
-  useTaskMutation((task: Task) => (task.status === 'open' ? api.complete(task.id) : api.reopen(task.id)));
+  useTaskMutation((task: Task) => (task.status === 'done' ? api.reopen(task.id) : api.complete(task.id)));
+
+export const useSetRepeat = () =>
+  useTaskMutation(({ id, repeat }: { id: string; repeat: TaskRepeat | null }) =>
+    repeat ? api.setRepeat(id, repeat) : api.stopRepeat(id),
+  );

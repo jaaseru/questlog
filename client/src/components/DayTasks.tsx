@@ -3,7 +3,7 @@ import { useDay } from '../queries';
 import type { Task } from '../types';
 import { QuickAdd } from './QuickAdd';
 import { TaskEditor } from './TaskEditor';
-import { TaskItem, TaskList } from './TaskItem';
+import { TaskItem, TaskList, UpcomingItem } from './TaskItem';
 
 interface Props {
   date: string;
@@ -27,16 +27,19 @@ export function DayTasks({ date, today, dueElsewhere = [] }: Props) {
 
       {data && (
         <>
-          {data.open.length > 0 ? (
+          {data.open.length > 0 || data.upcoming.length > 0 ? (
             <TaskList>
               {data.open.map((t) => (
                 <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
               ))}
+              {data.upcoming.map((u) => (
+                <UpcomingItem key={`${u.seriesId}-${u.date}`} item={u} />
+              ))}
             </TaskList>
-          ) : (
+          ) : isPast && (data.missed.length > 0 || data.done.length > 0) ? null : (
             <p className="empty">
               {isPast
-                ? 'Nothing was left open on this day.'
+                ? 'Nothing happened on this day.'
                 : data.done.length > 0
                   ? 'All done. Nice work.'
                   : 'Nothing planned yet.'}
@@ -48,6 +51,17 @@ export function DayTasks({ date, today, dueElsewhere = [] }: Props) {
               <h2 className="section-title">Due this day · {dueElsewhere.length}</h2>
               <TaskList>
                 {dueElsewhere.map((t) => (
+                  <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
+                ))}
+              </TaskList>
+            </>
+          )}
+
+          {data.missed.length > 0 && (
+            <>
+              <h2 className="section-title">Missed · {data.missed.length}</h2>
+              <TaskList>
+                {data.missed.map((t) => (
                   <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
                 ))}
               </TaskList>

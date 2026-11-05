@@ -27,11 +27,35 @@ export interface AuditEntry {
   detail: { username?: string; reason?: string; via?: string; from?: string; to?: string };
 }
 
+export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly'] as const;
+export type Frequency = (typeof FREQUENCIES)[number];
+export const KINDS = ['optional', 'fixed', 'variable'] as const;
+export type RepeatKind = (typeof KINDS)[number];
+
+export interface TaskRepeat {
+  frequency: Frequency;
+  /** Every N days/weeks/months/years. */
+  every: number;
+  /** ISO weekdays (1 = Monday … 7 = Sunday); weekly only. Empty = the task's own weekday. */
+  weekdays: number[];
+  kind: RepeatKind;
+}
+
+/** A future occurrence of a repeating task; becomes a real task on its day. */
+export interface Upcoming extends TaskRepeat {
+  seriesId: string;
+  date: string;
+  title: string;
+  priority: Priority;
+  /** Flexible series whose current occurrence is still open: the date may move. */
+  estimated: boolean;
+}
+
 export interface Task {
   id: string;
   title: string;
   notes: string;
-  status: 'open' | 'done';
+  status: 'open' | 'done' | 'missed';
   priority: Priority;
   scheduledDate: string | null;
   originalDate: string | null;
@@ -43,6 +67,9 @@ export interface Task {
   createdBy: string | null;
   /** Users who can see and work on the task. More than one means it's shared. */
   memberIds: string[];
+  seriesId: string | null;
+  occurrenceDate: string | null;
+  repeat: TaskRepeat | null;
   createdAt: string;
   updatedAt: string;
 }

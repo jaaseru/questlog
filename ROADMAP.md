@@ -18,9 +18,8 @@ These give the most value for the effort, given what the app already has.
 | --- | --- | --- | --- |
 | 1 | **Nightly AI review** | L | The original goal. `task_events` already records age, roll-overs and reschedules, which are the signals it needs. |
 | 2 | **Automatic tests on GitHub** | S | Runs the 66 tests on every pull request, so a broken change can't reach `main` unnoticed. |
-| 3 | **Recurring tasks** | M | The most common thing todo apps have that questlog doesn't: weekly reports, monthly bills. |
-| 4 | **Two-factor sign-in for the admin** | M | Your account can manage everyone else's; a second factor protects it if your password leaks. |
-| 5 | **Push reminders** | L | Makes due dates and future todos actually reach you, instead of waiting for you to open the app. |
+| 3 | **Two-factor sign-in for the admin** | M | Your account can manage everyone else's; a second factor protects it if your password leaks. |
+| 4 | **Push reminders** | L | Makes due dates and future todos actually reach you, instead of waiting for you to open the app. |
 
 ---
 
@@ -37,7 +36,6 @@ These give the most value for the effort, given what the app already has.
 
 | Feature | What it does | Size | Notes |
 | --- | --- | --- | --- |
-| **Recurring tasks** | "Every Monday", "1st of each month", "every 2 weeks". The next one appears when the current one is done or its day comes. | M | Needs a rule per task and care with roll-over. |
 | Subtasks / checklists | Tick off steps inside a task; the task shows "2/5". | M | |
 | Projects or tags | Group tasks ("Work", "Home", "Trip") and filter lists by them. | M | |
 | Board view | Jira-style columns: To do / In progress / Done, per project. | L | Needs an "in progress" status and Projects. |
@@ -109,3 +107,5 @@ These give the most value for the effort, given what the app already has.
 - Calendar month view with journal, planned days and due dates
 - Multiple users, private and shared tasks
 - Admin page, account page, revocable sessions, sign-in throttling, audit log
+- Week numbers in the calendar and day header
+- Repeating tasks: daily/weekly/monthly/yearly, optional / mandatory fixed / mandatory flexible, missed tracking
