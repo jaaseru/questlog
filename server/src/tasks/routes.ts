@@ -2,7 +2,9 @@ import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { addDays, isIsoDate, todayIn } from '../dates.js';
 import { HttpError } from '../errors.js';
+import { FREQUENCIES, KINDS } from '../recurrence.js';
 import type { RolloverScheduler } from '../rollover.js';
+import { SeriesRepo } from '../series.js';
 import { PRIORITIES, TaskRepo } from './repo.js';
 
 const isoDate = z.string().refine(isIsoDate, 'Expected a date as YYYY-MM-DD');
@@ -21,6 +23,17 @@ const createSchema = z.object({
   memberIds: z.array(z.uuid()).max(50).optional(),
 });
 
+const repeatSchema = z
+  .object({
+    frequency: z.enum(FREQUENCIES),
+    every: z.number().int().min(1).max(365).default(1),
+    weekdays: z.array(z.number().int().min(1).max(7)).max(7).default([]),
+    kind: z.enum(KINDS),
+    // Last day an occurrence may fall on; null or omitted = forever.
+    until: isoDate.nullable().default(null),
+  })
+  .strict();
+
 // On update, memberIds is the complete list of members (it may drop the caller: "leave task").
 const updateSchema = createSchema.partial().strict();
 
@@ -38,7 +51,7 @@ function currentUserId(req: Request): string {
   return req.user!.id;
 }
 
-export function tasksRouter(repo: TaskRepo, scheduler: RolloverScheduler, timeZone: string): Router {
+export function tasksRouter(repo: TaskRepo, series: SeriesRepo, scheduler: RolloverScheduler, timeZone: string): Router {
   const router = Router();
   const today = () => todayIn(timeZone);
 
@@ -50,7 +63,14 @@ export function tasksRouter(repo: TaskRepo, scheduler: RolloverScheduler, timeZo
 
   router.get('/day/:date', async (req, res) => {
     const date = isoDate.parse(req.params.date);
-    res.json({ date, today: today(), ...(await repo.listForDay(currentUserId(req), date)) });
+    const userId = currentUserId(req);
+    const now = today();
+    res.json({
+      date,
+      today: now,
+      ...(await repo.listForDay(userId, date)),
+      upcoming: await series.upcoming(userId, date, date, now),
+    });
   });
 
   router.get('/backlog', async (req, res) => {
@@ -71,7 +91,15 @@ export function tasksRouter(repo: TaskRepo, scheduler: RolloverScheduler, timeZo
     if (addDays(from, MAX_CALENDAR_DAYS - 1) < to) {
       throw new HttpError(400, `A calendar range can span at most ${MAX_CALENDAR_DAYS} days`);
     }
-    res.json({ from, to, today: today(), ...(await repo.listCalendar(currentUserId(req), from, to)) });
+    const userId = currentUserId(req);
+    const now = today();
+    res.json({
+      from,
+      to,
+      today: now,
+      ...(await repo.listCalendar(userId, from, to)),
+      upcoming: await series.upcoming(userId, from, to, now),
+    });
   });
 
   router.get('/:id', async (req, res) => {
@@ -113,8 +141,24 @@ export function tasksRouter(repo: TaskRepo, scheduler: RolloverScheduler, timeZo
     res.json((await repo.reopen(userId, id, today())) ?? (await repo.get(userId, id)) ?? notFound());
   });
 
+  // Make a task repeat, or change its rule. The task becomes the first occurrence.
+  router.put('/:id/repeat', async (req, res) => {
+    const userId = currentUserId(req);
+    const id = idParam(req);
+    await series.setRepeat(userId, id, repeatSchema.parse(req.body));
+    res.json((await repo.get(userId, id)) ?? notFound());
+  });
+
+  // Stop repeating. Past occurrences stay; the current one becomes an ordinary task.
+  router.delete('/:id/repeat', async (req, res) => {
+    const userId = currentUserId(req);
+    const id = idParam(req);
+    await series.stopRepeat(userId, id);
+    res.json((await repo.get(userId, id)) ?? notFound());
+  });
+
   router.delete('/:id', async (req, res) => {
-    const result = await repo.delete(currentUserId(req), idParam(req));
+    const result = await repo.delete(currentUserId(req), idParam(req), today());
     if (result === 'not_found') notFound();
     if (result === 'forbidden') {
       throw new HttpError(403, 'Only the person who created a shared task can delete it. You can leave it instead.');

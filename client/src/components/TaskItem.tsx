@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { shortDate } from '../dates';
 import { useMe, useToggleTask, useUsers } from '../queries';
-import type { Task } from '../types';
-import { CheckIcon } from './icons';
+import { KIND_SHORT, repeatChip } from '../repeat';
+import type { Task, Upcoming } from '../types';
+import { CheckIcon, RepeatIcon } from './icons';
 
 interface Props {
   task: Task;
@@ -18,11 +19,12 @@ export function TaskItem({ task, today, onOpen, action }: Props) {
   const others = task.memberIds.filter((id) => id !== me.id).map((id) => byId.get(id)?.displayName ?? 'someone');
   const completedBy = task.completedBy && task.completedBy !== me.id ? byId.get(task.completedBy)?.displayName : null;
   // Flip immediately while the request is in flight.
-  const done = toggle.isPending ? task.status === 'open' : task.status === 'done';
+  const done = toggle.isPending ? task.status !== 'done' : task.status === 'done';
+  const missed = !done && task.status === 'missed';
   const overdue = !done && task.dueDate !== null && task.dueDate < today;
 
   return (
-    <li className={`task priority-${task.priority}${done ? ' is-done' : ''}`}>
+    <li className={`task priority-${task.priority}${done ? ' is-done' : ''}${missed ? ' is-missed' : ''}`}>
       <button
         className="check"
         role="checkbox"
@@ -36,7 +38,13 @@ export function TaskItem({ task, today, onOpen, action }: Props) {
       <button className="task__body" onClick={() => onOpen(task)}>
         <span className="task__title">{task.title}</span>
         <span className="task__meta">
+          {missed && <span className="chip chip--missed">missed</span>}
           {task.priority !== 'medium' && <span className={`chip chip--${task.priority}`}>{task.priority}</span>}
+          {task.repeat && (
+            <span className="chip chip--repeat">
+              <RepeatIcon /> {repeatChip(task.repeat)} · {KIND_SHORT[task.repeat.kind]}
+            </span>
+          )}
           {!done && task.rolloverCount > 0 && task.originalDate && (
             <span className="chip chip--rolled" title={`Carried over ${task.rolloverCount}×`}>
               ↻ since {shortDate(task.originalDate)}
@@ -55,6 +63,24 @@ export function TaskItem({ task, today, onOpen, action }: Props) {
         </span>
       </button>
       {action}
+    </li>
+  );
+}
+
+/** A future occurrence of a repeating task: a read-only preview until its day arrives. */
+export function UpcomingItem({ item }: { item: Upcoming }) {
+  return (
+    <li className={`task task--upcoming priority-${item.priority}`}>
+      <span className="check" aria-hidden />
+      <span className="task__body">
+        <span className="task__title">{item.title}</span>
+        <span className="task__meta">
+          <span className="chip chip--repeat">
+            <RepeatIcon /> {repeatChip(item)} · {KIND_SHORT[item.kind]}
+          </span>
+          {item.estimated && <span className="chip">estimated: moves if the current one is done late</span>}
+        </span>
+      </span>
     </li>
   );
 }

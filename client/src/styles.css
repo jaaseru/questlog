@@ -831,6 +831,9 @@ textarea {
 .dot--due {
   background: var(--danger);
 }
+.dot--missed {
+  background: var(--medium);
+}
 
 .calendar__titles {
   display: none;
@@ -937,6 +940,25 @@ textarea {
 
   .calendar__title--due::before {
     content: 'Due: ';
+    font-weight: 600;
+  }
+
+  .calendar__title--upcoming {
+    border-left-style: dashed;
+    background: transparent;
+    outline: 1px dashed var(--border);
+    outline-offset: -1px;
+  }
+
+  .calendar__title--missed {
+    border-left-color: var(--medium);
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .calendar__title--missed::before {
+    content: 'Missed: ';
+    font-style: normal;
     font-weight: 600;
   }
 
@@ -1201,4 +1223,148 @@ code {
 
 .activity li.is-warning > span:first-child {
   color: var(--danger);
+}
+
+/* ---------- Repeating tasks ---------- */
+
+.chip--repeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--rolled);
+  background: color-mix(in srgb, var(--rolled) 10%, transparent);
+}
+
+.chip--missed {
+  color: var(--text);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.task.is-missed .task__title {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.task.is-missed .check::before {
+  border-style: dashed;
+}
+
+.task--upcoming {
+  opacity: 0.7;
+}
+
+.task--upcoming .check {
+  cursor: default;
+}
+
+.task--upcoming .check::before {
+  border-style: dashed;
+}
+
+.task--upcoming .task__body {
+  cursor: default;
+}
+
+.repeat {
+  gap: 10px;
+}
+
+.repeat__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.repeat select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.repeat__every {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.repeat__every input {
+  width: 4.5em;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.weekday {
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.weekday.is-on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.kinds {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kind {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.kind.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.kind input {
+  accent-color: var(--accent);
+}
+
+.repeat__until .toggle {
+  min-height: 44px;
+}
+
+.repeat__summary {
+  line-height: 1.45;
+}
+
+@media (min-width: 640px) {
+  .kinds {
+    flex-direction: row;
+  }
+
+  .kind {
+    flex: 1;
+    font-size: 0.85rem;
+  }
 }

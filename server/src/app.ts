@@ -20,6 +20,7 @@ import { todayIn } from './dates.js';
 import type { Db } from './db.js';
 import { HttpError } from './errors.js';
 import type { RolloverScheduler } from './rollover.js';
+import { SeriesRepo } from './series.js';
 import { TaskRepo } from './tasks/repo.js';
 import { tasksRouter } from './tasks/routes.js';
 import { UserRepo } from './users.js';
@@ -70,7 +71,7 @@ export function createApp({ db, config, scheduler, clientDir, loginLimits }: App
   app.get('/api/meta', (_req, res) => {
     res.json({ today: todayIn(config.timezone), timezone: config.timezone });
   });
-  app.use('/api/tasks', tasksRouter(new TaskRepo(db), scheduler, config.timezone));
+  app.use('/api/tasks', tasksRouter(new TaskRepo(db), new SeriesRepo(db), scheduler, config.timezone));
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Not found' });
   });

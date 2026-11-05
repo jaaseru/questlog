@@ -1,10 +1,20 @@
 import type pg from 'pg';
 import { withTransaction, type Db, type Queryable } from '../db.js';
 import { HttpError } from '../errors.js';
+import type { Frequency, RepeatKind } from '../recurrence.js';
+import { SeriesRepo } from '../series.js';
 
 export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export type Priority = (typeof PRIORITIES)[number];
-export type TaskStatus = 'open' | 'done';
+export type TaskStatus = 'open' | 'done' | 'missed';
+
+export interface TaskRepeat {
+  frequency: Frequency;
+  every: number;
+  weekdays: number[];
+  kind: RepeatKind;
+  until: string | null;
+}
 
 export interface Task {
   id: string;
@@ -22,6 +32,10 @@ export interface Task {
   createdBy: string | null;
   /** Users who can see and work on the task. More than one means it's shared. */
   memberIds: string[];
+  seriesId: string | null;
+  occurrenceDate: string | null;
+  /** How the task repeats, if it belongs to an active series. */
+  repeat: TaskRepeat | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +63,10 @@ const COLUMNS = `
   t.completed_by AS "completedBy",
   t.created_by AS "createdBy",
   ARRAY(SELECT m.user_id FROM task_members m WHERE m.task_id = t.id ORDER BY m.added_at, m.user_id) AS "memberIds",
+  t.series_id AS "seriesId",
+  t.occurrence_date AS "occurrenceDate",
+  (SELECT json_build_object('frequency', s.frequency, 'every', s.repeat_every, 'weekdays', s.weekdays, 'kind', s.kind, 'until', s.end_date)
+     FROM task_series s WHERE s.id = t.series_id AND s.active) AS "repeat",
   t.created_at AS "createdAt",
   t.updated_at AS "updatedAt"`;
 
@@ -70,15 +88,20 @@ const FIELD_COLUMNS = {
 export type DeleteResult = 'deleted' | 'not_found' | 'forbidden';
 
 export class TaskRepo {
-  constructor(private readonly db: Db) {}
+  private readonly series: SeriesRepo;
 
-  /** A day page: open tasks on that day's list plus tasks completed that day. */
-  async listForDay(userId: string, date: string): Promise<{ open: Task[]; done: Task[] }> {
-    const [open, done] = await Promise.all([
+  constructor(private readonly db: Db) {
+    this.series = new SeriesRepo(db);
+  }
+
+  /** A day page: open tasks on that day's list, tasks completed that day, and missed occurrences. */
+  async listForDay(userId: string, date: string): Promise<{ open: Task[]; done: Task[]; missed: Task[] }> {
+    const [open, done, missed] = await Promise.all([
       this.select(`t.status = 'open' AND t.scheduled_date = $2 ORDER BY ${BY_PRIORITY}`, [userId, date]),
       this.select(`t.status = 'done' AND t.completed_on = $2 ORDER BY t.completed_at`, [userId, date]),
+      this.select(`t.status = 'missed' AND t.scheduled_date = $2 ORDER BY ${BY_PRIORITY}`, [userId, date]),
     ]);
-    return { open, done };
+    return { open, done, missed };
   }
 
   listBacklog(userId: string): Promise<Task[]> {
@@ -99,17 +122,22 @@ export class TaskRepo {
    * - open: open tasks on a day list in the range (today and planned days)
    * - due: open tasks with a due date in the range (deadline markers)
    */
-  async listCalendar(userId: string, from: string, to: string): Promise<{ done: Task[]; open: Task[]; due: Task[] }> {
+  async listCalendar(
+    userId: string,
+    from: string,
+    to: string,
+  ): Promise<{ done: Task[]; open: Task[]; due: Task[]; missed: Task[] }> {
     const params = [userId, from, to];
-    const [done, open, due] = await Promise.all([
+    const [done, open, due, missed] = await Promise.all([
       this.select(`t.status = 'done' AND t.completed_on BETWEEN $2 AND $3 ORDER BY t.completed_on, t.completed_at`, params),
       this.select(
         `t.status = 'open' AND t.scheduled_date BETWEEN $2 AND $3 ORDER BY t.scheduled_date, ${BY_PRIORITY}`,
         params,
       ),
       this.select(`t.status = 'open' AND t.due_date BETWEEN $2 AND $3 ORDER BY t.due_date, ${BY_PRIORITY}`, params),
+      this.select(`t.status = 'missed' AND t.scheduled_date BETWEEN $2 AND $3 ORDER BY t.scheduled_date`, params),
     ]);
-    return { done, open, due };
+    return { done, open, due, missed };
   }
 
   async get(userId: string, id: string, db: Queryable = this.db): Promise<Task | null> {
@@ -181,21 +209,27 @@ export class TaskRepo {
         }
       }
 
+      if (sets.length || patch.memberIds !== undefined) await this.series.syncTemplate(c, id);
+
       // The acting user may have just removed themselves; return what they last saw in that case.
       return (await this.get(userId, id, c)) ?? (await this.getUnscoped(id, c));
     });
   }
 
-  /** Marks an open task done on `today`. Returns null if the task isn't visible or is already done. */
+  /**
+   * Marks an open (or missed) task done on `today`. Returns null if the task isn't visible or is
+   * already done. Completing a flexible occurrence sets when the next one is due.
+   */
   async complete(userId: string, id: string, today: string): Promise<Task | null> {
     return withTransaction(this.db, async (c) => {
       const { rowCount } = await c.query(
         `UPDATE tasks t SET status = 'done', completed_at = now(), completed_on = $3, completed_by = $1, updated_at = now()
-         WHERE t.id = $2 AND t.status = 'open' AND ${VISIBLE}`,
+         WHERE t.id = $2 AND t.status IN ('open', 'missed') AND ${VISIBLE}`,
         [userId, id, today],
       );
       if (!rowCount) return null;
       await logEvent(c, id, userId, 'completed', null, today);
+      await this.series.scheduleNextFlexible(c, id, today);
       return this.get(userId, id, c);
     });
   }
@@ -207,7 +241,7 @@ export class TaskRepo {
         `UPDATE tasks t SET
            status = 'open', completed_at = NULL, completed_on = NULL, completed_by = NULL, updated_at = now(),
            scheduled_date = CASE WHEN t.scheduled_date < $3 THEN $3 ELSE t.scheduled_date END
-         WHERE t.id = $2 AND t.status = 'done' AND ${VISIBLE}
+         WHERE t.id = $2 AND t.status IN ('done', 'missed') AND ${VISIBLE}
          RETURNING t.scheduled_date`,
         [userId, id, today],
       );
@@ -217,12 +251,18 @@ export class TaskRepo {
     });
   }
 
-  /** Only the creator may delete. Other members can leave a shared task by removing themselves. */
-  async delete(userId: string, id: string): Promise<DeleteResult> {
+  /**
+   * Only the creator may delete. Other members can leave a shared task by removing themselves.
+   * Deleting the open occurrence of a flexible series skips it: the next one is a period from today.
+   */
+  async delete(userId: string, id: string, today: string): Promise<DeleteResult> {
     const task = await this.get(userId, id);
     if (!task) return 'not_found';
     if (task.createdBy !== null && task.createdBy !== userId) return 'forbidden';
-    await this.db.query('DELETE FROM tasks WHERE id = $1', [id]);
+    await withTransaction(this.db, async (c) => {
+      if (task.status === 'open') await this.series.scheduleNextFlexible(c, id, today);
+      await c.query('DELETE FROM tasks WHERE id = $1', [id]);
+    });
     return 'deleted';
   }
 

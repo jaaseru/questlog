@@ -62,6 +62,13 @@ export const ShieldIcon = () => (
     <path d="M9 12l2 2 4-4" />
   </svg>
 );
+export const RepeatIcon = () => (
+  <svg {...base} width={12} height={12} strokeWidth={2.5}>
+    <path d="M17 2l4 4-4 4" />
+    <path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4" />
+    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+  </svg>
+);
 export const CheckIcon = () => (
   <svg {...base} width={14} height={14} strokeWidth={3}>
     <path d="M5 12l5 5 9-10" />

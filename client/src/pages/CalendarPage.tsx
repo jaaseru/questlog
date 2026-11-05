@@ -14,15 +14,17 @@ import {
   weekdayNames,
 } from '../dates';
 import { useCalendar, useToday } from '../queries';
-import type { Task } from '../types';
+import type { Task, Upcoming } from '../types';
 
 interface DayEntries {
   done: Task[];
   open: Task[];
   due: Task[];
+  missed: Task[];
+  upcoming: Upcoming[];
 }
 
-const EMPTY: DayEntries = { done: [], open: [], due: [] };
+const EMPTY: DayEntries = { done: [], open: [], due: [], missed: [], upcoming: [] };
 const MAX_TITLES = 3;
 
 export function CalendarPage() {
@@ -45,13 +47,15 @@ function CalendarView({ today }: { today: string }) {
     const map = new Map<string, DayEntries>();
     const entry = (date: string) => {
       let e = map.get(date);
-      if (!e) map.set(date, (e = { done: [], open: [], due: [] }));
+      if (!e) map.set(date, (e = { done: [], open: [], due: [], missed: [], upcoming: [] }));
       return e;
     };
     for (const t of data?.done ?? []) entry(t.completedOn!).done.push(t);
     for (const t of data?.open ?? []) entry(t.scheduledDate!).open.push(t);
     // A deadline is only worth its own marker when the task isn't already listed on that day.
     for (const t of data?.due ?? []) if (t.scheduledDate !== t.dueDate) entry(t.dueDate!).due.push(t);
+    for (const t of data?.missed ?? []) entry(t.scheduledDate!).missed.push(t);
+    for (const u of data?.upcoming ?? []) entry(u.date).upcoming.push(u);
     return map;
   }, [data]);
 
@@ -119,6 +123,9 @@ function CalendarView({ today }: { today: string }) {
         <span className="legend__item">
           <i className="dot dot--due" /> Due
         </span>
+        <span className="legend__item">
+          <i className="dot dot--missed" /> Missed
+        </span>
       </div>
 
       <div className="agenda">
@@ -150,16 +157,21 @@ interface CellProps {
 }
 
 function CalendarCell({ date, today, inMonth, selected, entries, onSelect }: CellProps) {
-  const { done, open, due } = entries;
+  const { done, open, due, missed, upcoming } = entries;
+  // Upcoming repeats count as planned: they become real tasks when the day comes.
+  const planned = open.length + upcoming.length;
   const titles = [
-    ...open.map((t) => ({ t, kind: 'open' as const })),
-    ...due.map((t) => ({ t, kind: 'due' as const })),
-    ...done.map((t) => ({ t, kind: 'done' as const })),
+    ...open.map((t) => ({ key: t.id, title: t.title, priority: t.priority, kind: 'open' as const })),
+    ...upcoming.map((u) => ({ key: u.seriesId, title: u.title, priority: u.priority, kind: 'upcoming' as const })),
+    ...due.map((t) => ({ key: t.id, title: t.title, priority: t.priority, kind: 'due' as const })),
+    ...done.map((t) => ({ key: t.id, title: t.title, priority: t.priority, kind: 'done' as const })),
+    ...missed.map((t) => ({ key: t.id, title: t.title, priority: t.priority, kind: 'missed' as const })),
   ];
   const summary = [
     done.length && `${done.length} completed`,
-    open.length && `${open.length} planned`,
+    planned && `${planned} planned`,
     due.length && `${due.length} due`,
+    missed.length && `${missed.length} missed`,
   ]
     .filter(Boolean)
     .join(', ');
@@ -186,15 +198,16 @@ function CalendarCell({ date, today, inMonth, selected, entries, onSelect }: Cel
       {/* Phones: compact markers */}
       <span className="calendar__dots" aria-hidden>
         {done.length > 0 && <span className="count count--done">{done.length}</span>}
-        {open.length > 0 && <span className="count count--open">{open.length}</span>}
+        {planned > 0 && <span className="count count--open">{planned}</span>}
         {due.length > 0 && <i className="dot dot--due" />}
+        {missed.length > 0 && <i className="dot dot--missed" />}
       </span>
 
       {/* Wider screens: the first few titles */}
       <span className="calendar__titles" aria-hidden>
-        {titles.slice(0, MAX_TITLES).map(({ t, kind }) => (
-          <span key={`${kind}-${t.id}`} className={`calendar__title calendar__title--${kind} priority-${t.priority}`}>
-            {t.title}
+        {titles.slice(0, MAX_TITLES).map(({ key, title, priority, kind }) => (
+          <span key={`${kind}-${key}`} className={`calendar__title calendar__title--${kind} priority-${priority}`}>
+            {title}
           </span>
         ))}
         {titles.length > MAX_TITLES && <span className="calendar__more">+{titles.length - MAX_TITLES} more</span>}
