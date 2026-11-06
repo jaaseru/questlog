@@ -3,7 +3,8 @@
  *
  * Rules:
  * - Items can have sub-items, one level deep.
- * - Checking an item checks all its sub-items; checking its last open sub-item checks the item.
+ * - Checking an item checks all its sub-items. An item is only checked off by checking it
+ *   itself: it stays open even when all its sub-items are done.
  * - Unchecking an item unchecks its sub-items; unchecking a sub-item reopens its item.
  * - Adding a sub-item to a checked item reopens the item.
  * - Checked-off entries are deleted CHECKED_RETENTION_HOURS after being checked off.
@@ -81,13 +82,6 @@ export class ShoppingRepo {
         id,
         userId,
       ]);
-      // Last open sub-item: the item is done too.
-      await c.query(
-        `UPDATE shopping_items p SET checked_at = now(), checked_by = $2
-         WHERE p.id = $1 AND p.checked_at IS NULL
-           AND NOT EXISTS (SELECT 1 FROM shopping_items s WHERE s.parent_id = p.id AND s.checked_at IS NULL)`,
-        [item.parent_id, userId],
-      );
     });
   }
 

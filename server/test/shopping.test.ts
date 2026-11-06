@@ -109,14 +109,22 @@ describe.skipIf(!databaseUrl)('shopping list (needs TEST_DATABASE_URL)', () => {
       expect(await state()).toEqual({ 'Taco night': 'open', Tortillas: 'open', Salsa: 'open' });
     });
 
-    it('checking the last open sub-item checks the item; unchecking a sub-item reopens it', async () => {
+    it('the item stays open when all its sub-items are checked; it must be checked itself', async () => {
       const tacos = await add(asAlice, 'Taco night');
       const tortillas = await add(asAlice, 'Tortillas', tacos.id);
       const salsa = await add(asAlice, 'Salsa', tacos.id);
       await asAlice.post(`/api/shopping/${tortillas.id}/check`).expect(200);
-      expect(await state()).toEqual({ 'Taco night': 'open', Tortillas: 'checked', Salsa: 'open' });
       await asBob.post(`/api/shopping/${salsa.id}/check`).expect(200);
+      expect(await state()).toEqual({ 'Taco night': 'open', Tortillas: 'checked', Salsa: 'checked' });
+      await asBob.post(`/api/shopping/${tacos.id}/check`).expect(200);
       expect(await state()).toEqual({ 'Taco night': 'checked', Tortillas: 'checked', Salsa: 'checked' });
+    });
+
+    it('unchecking a sub-item of a checked item reopens the item', async () => {
+      const tacos = await add(asAlice, 'Taco night');
+      await add(asAlice, 'Tortillas', tacos.id);
+      const salsa = await add(asAlice, 'Salsa', tacos.id);
+      await asAlice.post(`/api/shopping/${tacos.id}/check`).expect(200);
       await asAlice.post(`/api/shopping/${salsa.id}/uncheck`).expect(200);
       expect(await state()).toEqual({ 'Taco night': 'open', Tortillas: 'checked', Salsa: 'open' });
     });
