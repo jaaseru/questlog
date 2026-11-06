@@ -191,9 +191,12 @@ textarea {
   cursor: pointer;
 }
 
-.icon-btn:hover {
-  background: var(--surface-2);
-  color: var(--text);
+/* Only on devices with a real pointer: on touch screens :hover sticks after a tap. */
+@media (hover: hover) {
+  .icon-btn:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
 
 /* ---------- Shell: mobile first ---------- */
@@ -309,11 +312,6 @@ textarea {
     font-size: 0.95rem;
   }
 
-  .nav__link:hover {
-    background: var(--surface-2);
-    color: var(--text);
-  }
-
   .nav__link.is-active {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
@@ -369,8 +367,11 @@ textarea {
   text-decoration: none;
 }
 
-.section-title a:hover {
-  color: var(--text);
+/* Only on devices with a real pointer: on touch screens :hover sticks after a tap. */
+@media (hover: hover) {
+  .section-title a:hover {
+    color: var(--text);
+  }
 }
 
 .empty {
@@ -754,8 +755,11 @@ textarea {
   text-align: left;
 }
 
-.calendar__day:hover {
-  border-color: var(--border);
+/* Only on devices with a real pointer: on touch screens :hover sticks after a tap. */
+@media (hover: hover) {
+  .calendar__day:hover {
+    border-color: var(--border);
+  }
 }
 
 .calendar__day.is-outside {
@@ -980,8 +984,11 @@ textarea {
   padding: 4px 10px 4px 4px;
 }
 
-.topbar__user:hover {
-  background: var(--surface-2);
+/* Only on devices with a real pointer: on touch screens :hover sticks after a tap. */
+@media (hover: hover) {
+  .topbar__user:hover {
+    background: var(--surface-2);
+  }
 }
 
 .share-picker {
@@ -1072,8 +1079,11 @@ textarea {
   text-decoration: none;
 }
 
-.card--link:hover {
-  border-color: var(--accent);
+/* Only on devices with a real pointer: on touch screens :hover sticks after a tap. */
+@media (hover: hover) {
+  .card--link:hover {
+    border-color: var(--accent);
+  }
 }
 
 .form-stack {
@@ -1433,8 +1443,11 @@ code {
   text-decoration: none;
 }
 
-.weather__credit:hover {
-  text-decoration: underline;
+/* Only on devices with a real pointer: on touch screens :hover sticks after a tap. */
+@media (hover: hover) {
+  .weather__credit:hover {
+    text-decoration: underline;
+  }
 }
 
 /* ---------- Notifications ---------- */
@@ -1474,4 +1487,11 @@ code {
 
 .small {
   font-size: 0.8rem;
+}
+
+@media (min-width: 800px) and (hover: hover) {
+  .nav__link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
