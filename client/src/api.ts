@@ -71,7 +71,15 @@ export const api = {
   weather: (lat: number, lon: number) => request<WeatherReport>(`/weather?lat=${lat}&lon=${lon}`),
 
   day: (date: string) =>
-    request<{ date: string; today: string; open: Task[]; done: Task[]; missed: Task[]; upcoming: Upcoming[] }>(
+    request<{
+      date: string;
+      today: string;
+      open: Task[];
+      done: Task[];
+      missed: Task[];
+      dueElsewhere: Task[];
+      upcoming: Upcoming[];
+    }>(
       `/tasks/day/${date}`,
     ),
   backlog: () => request<{ tasks: Task[] }>('/tasks/backlog'),

@@ -9,12 +9,10 @@ import { WeatherCard } from './WeatherCard';
 interface Props {
   date: string;
   today: string;
-  /** Open tasks due on this day that live on another list; shown as deadline reminders. */
-  dueElsewhere?: Task[];
 }
 
-/** One day's quick-add, open list and completed list: shared by the Day page and the calendar agenda. */
-export function DayTasks({ date, today, dueElsewhere = [] }: Props) {
+/** One day's quick-add, open list, weather, and missed/completed lists. */
+export function DayTasks({ date, today }: Props) {
   const { data, isPending, error } = useDay(date);
   const [editing, setEditing] = useState<Task | null>(null);
   const isPast = date < today;
@@ -47,11 +45,11 @@ export function DayTasks({ date, today, dueElsewhere = [] }: Props) {
             </p>
           )}
 
-          {dueElsewhere.length > 0 && (
+          {data.dueElsewhere.length > 0 && (
             <>
-              <h2 className="section-title">Due this day · {dueElsewhere.length}</h2>
+              <h2 className="section-title">Due this day · {data.dueElsewhere.length}</h2>
               <TaskList>
-                {dueElsewhere.map((t) => (
+                {data.dueElsewhere.map((t) => (
                   <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
                 ))}
               </TaskList>

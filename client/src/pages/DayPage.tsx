@@ -1,7 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router';
 import { DayTasks } from '../components/DayTasks';
 import { ChevronLeft, ChevronRight } from '../components/icons';
-import { addDays, isIsoDate, isoWeek, longDate, relativeDayName } from '../dates';
+import { addDays, isIsoDate, isoWeek, longDate, relativeDayName, weekdayName } from '../dates';
 import { useToday } from '../queries';
 
 export function DayPage() {
@@ -15,6 +15,9 @@ export function DayPage() {
 
 function DayView({ date, today }: { date: string; today: string }) {
   const isPast = date < today;
+  const title = relativeDayName(date, today);
+  // "Today" / "Tomorrow" / "Yesterday" don't say which weekday it is, so add it below.
+  const weekday = weekdayName(date);
   const dayHref = (d: string) => (d === today ? '/' : `/day/${d}`);
 
   return (
@@ -24,8 +27,9 @@ function DayView({ date, today }: { date: string; today: string }) {
           <ChevronLeft />
         </Link>
         <div className="day-header__title">
-          <h1>{relativeDayName(date, today)}</h1>
+          <h1>{title}</h1>
           <p className="muted">
+            {title !== weekday && `${weekday}, `}
             {longDate(date, today)} · Week {isoWeek(date)}
             {isPast && ' · Journal'}
           </p>

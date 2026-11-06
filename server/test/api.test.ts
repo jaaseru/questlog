@@ -120,6 +120,15 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
       expect(ids(day.open)).toEqual([task.id]);
     });
 
+    it('lists tasks due on a day but planned elsewhere on that day page', async () => {
+      const due = addDays(today, 2);
+      const { body: backlogged } = await as.alice.post('/api/tasks').send({ title: 'Tax', scheduledDate: null, dueDate: due }).expect(201);
+      await as.alice.post('/api/tasks').send({ title: 'On its day', scheduledDate: due, dueDate: due }).expect(201);
+      const { body } = await as.alice.get(`/api/tasks/day/${due}`).expect(200);
+      expect(ids(body.dueElsewhere)).toEqual([backlogged.id]);
+      expect(body.open.map((t: { title: string }) => t.title)).toEqual(['On its day']);
+    });
+
     it('puts tasks with scheduledDate null in the backlog', async () => {
       await as.alice.post('/api/tasks').send({ title: 'Someday', scheduledDate: null }).expect(201);
       const { body } = await as.alice.get('/api/tasks/backlog').expect(200);

@@ -94,14 +94,24 @@ export class TaskRepo {
     this.series = new SeriesRepo(db);
   }
 
-  /** A day page: open tasks on that day's list, tasks completed that day, and missed occurrences. */
-  async listForDay(userId: string, date: string): Promise<{ open: Task[]; done: Task[]; missed: Task[] }> {
-    const [open, done, missed] = await Promise.all([
+  /**
+   * A day page: open tasks on that day's list, tasks completed that day, missed occurrences,
+   * and open tasks due that day that sit on another day or in the backlog.
+   */
+  async listForDay(
+    userId: string,
+    date: string,
+  ): Promise<{ open: Task[]; done: Task[]; missed: Task[]; dueElsewhere: Task[] }> {
+    const [open, done, missed, dueElsewhere] = await Promise.all([
       this.select(`t.status = 'open' AND t.scheduled_date = $2 ORDER BY ${BY_PRIORITY}`, [userId, date]),
       this.select(`t.status = 'done' AND t.completed_on = $2 ORDER BY t.completed_at`, [userId, date]),
       this.select(`t.status = 'missed' AND t.scheduled_date = $2 ORDER BY ${BY_PRIORITY}`, [userId, date]),
+      this.select(
+        `t.status = 'open' AND t.due_date = $2 AND t.scheduled_date IS DISTINCT FROM $2 ORDER BY ${BY_PRIORITY}`,
+        [userId, date],
+      ),
     ]);
-    return { open, done, missed };
+    return { open, done, missed, dueElsewhere };
   }
 
   listBacklog(userId: string): Promise<Task[]> {
