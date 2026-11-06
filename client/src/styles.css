@@ -1416,39 +1416,6 @@ code {
   font-size: 0.85rem;
 }
 
-.weather__ahead {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-  padding: 10px 0 0;
-  border-top: 1px solid var(--border);
-  list-style: none;
-}
-
-.weather__ahead li {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  text-align: center;
-  font-size: 0.85rem;
-}
-
-.weather__day {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.weather__range {
-  font-variant-numeric: tabular-nums;
-}
-
-.weather__rain {
-  font-size: 0.75rem;
-  color: var(--accent);
-}
-
 .weather--compact {
   flex-direction: row;
   flex-wrap: wrap;

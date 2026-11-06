@@ -1,4 +1,4 @@
-import { addDays, relativeDayName } from '../dates';
+import { addDays } from '../dates';
 import { describeSymbol, formatTemp, useWeather, useWeatherLocation, type DayForecast } from '../weather';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 const FORECAST_DAYS = 3;
 
 /**
- * Today: the weather now, the rest of today, and the next three days.
+ * Today: the weather now and the rest of today.
  * The next three days' pages: that day's forecast. Other days: nothing.
  */
 export function WeatherCard({ date, today }: Props) {
@@ -29,7 +29,7 @@ export function WeatherCard({ date, today }: Props) {
         <span className="weather__prompt-emoji" aria-hidden>
           ⛅
         </span>
-        <p>See today's weather and the next three days for where you are.</p>
+        <p>See the weather for where you are on today's page and the next three days.</p>
         <div className="row">
           <button className="btn btn--primary btn--small" onClick={enable}>
             Use my location
@@ -93,7 +93,6 @@ export function WeatherCard({ date, today }: Props) {
   }
 
   const current = describeSymbol(now?.symbol ?? day.symbol);
-  const ahead = days.filter((d) => d.date > today).slice(0, FORECAST_DAYS);
 
   return (
     <section className="weather" aria-label="Weather">
@@ -109,23 +108,6 @@ export function WeatherCard({ date, today }: Props) {
           <DayDetails day={day} />
         </div>
       </div>
-      <ol className="weather__ahead">
-        {ahead.map((d) => {
-          const s = describeSymbol(d.symbol);
-          return (
-            <li key={d.date} aria-label={`${relativeDayName(d.date, today)}: ${s.label}, ${formatTemp(d.minTemp)} to ${formatTemp(d.maxTemp)}`}>
-              <span className="weather__day">{shortDay(d.date, today)}</span>
-              <span className="weather__emoji" aria-hidden>
-                {s.emoji}
-              </span>
-              <span className="weather__range">
-                <strong>{formatTemp(d.maxTemp)}</strong> <span className="muted">{formatTemp(d.minTemp)}</span>
-              </span>
-              {d.precipitation >= 0.1 && <span className="weather__rain">{d.precipitation.toFixed(1)} mm</span>}
-            </li>
-          );
-        })}
-      </ol>
       <Credit />
     </section>
   );
@@ -149,9 +131,4 @@ function Credit() {
       Weather data from MET Norway (yr.no)
     </a>
   );
-}
-
-function shortDay(date: string, today: string): string {
-  if (date === addDays(today, 1)) return 'Tomorrow';
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' });
 }
