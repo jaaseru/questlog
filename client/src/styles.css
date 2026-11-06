@@ -1612,3 +1612,154 @@ code {
   min-height: 38px;
   width: 38px;
 }
+
+/* ---------- Planner layout: progress, priority groups, compact rows ---------- */
+
+/* Slightly smaller base size: everything sized in rem gets a little more compact. */
+:root {
+  font-size: 15px;
+}
+
+.day-header {
+  margin: 4px 0 0;
+}
+
+.day-header h1 {
+  font-size: 1.25rem;
+}
+
+.day-header__title p {
+  font-size: 0.8rem;
+}
+
+.jump-slot {
+  height: 20px;
+}
+
+.day-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 6px;
+}
+
+.day-progress__bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.day-progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--low);
+}
+
+.day-progress__text {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.priority-group + .priority-group {
+  margin-top: 12px;
+}
+
+.priority-group__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--p, var(--muted));
+}
+
+.priority-group__title span {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--p, var(--muted)) 14%, transparent);
+  font-size: 0.7rem;
+}
+
+/* Denser rows: chips sit on the same line as the title. */
+.task {
+  padding-right: 10px;
+}
+
+.check {
+  width: 38px;
+  height: 38px;
+  margin: 0;
+}
+
+.check::before {
+  width: 18px;
+  height: 18px;
+}
+
+.task__body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 7px 0;
+}
+
+.chip {
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+/* Priority is already the group heading. */
+.priority-group .chip--urgent,
+.priority-group .chip--high,
+.priority-group .chip--low {
+  display: none;
+}
+
+.quick-add {
+  margin: 6px 0 12px;
+}
+
+.quick-add input,
+.quick-add .btn {
+  min-height: 40px;
+}
+
+.quick-add .btn {
+  width: 40px;
+}
+
+.section-title {
+  margin: 16px 0 6px;
+}
+
+.calendar__day {
+  min-height: 46px;
+  border-radius: 8px;
+}
+
+.shop-row__text {
+  padding: 6px 0;
+}
+
+.page-header h1 {
+  font-size: 1.35rem;
+}
+
+@media (max-width: 799px) {
+  :root {
+    --nav-h: 56px;
+  }
+
+  .nav__link {
+    font-size: 0.68rem;
+  }
+}

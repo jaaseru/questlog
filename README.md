@@ -6,7 +6,7 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 
 ## What works today
 
-- **Day lists.** Every day has its own todo list. Use ‹ › to move between days. Future days take tasks as reminders. Past days read as a journal of what was finished.
+- **Day lists.** Every day has its own todo list, with open tasks grouped under Urgent / High / Medium / Low (plus upcoming repeats) and, on today, a progress bar. Use ‹ › to move between days. Future days take tasks as reminders. Past days read as a journal of what was finished.
 - **Automatic roll-over.** Open tasks left on a past day move onto today. They get a "↻ since …" badge, and the roll-over is logged.
 - **Calendar.** A month grid that combines the journal (completed), today, planned days and due dates. Phones show counters per day; wider screens show task titles. Tap a day to open it.
 - **Repeating tasks.** Daily, weekly (every N weeks, or on chosen weekdays such as Mon and Thu), monthly or yearly. Each series is a **routine** (not done on its day → missed), a **chore with a fixed day** (rolls over until the next one is due, then missed) or a **flexible chore** (rolls over, and the next one is one period after completion). Series can end on a chosen date. Future occurrences show as previews; missed ones stay in the journal and can still be completed. See [How repeating tasks work](#how-repeating-tasks-work).

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDay } from '../queries';
-import type { Task } from '../types';
+import { PRIORITIES, type Task } from '../types';
 import { QuickAdd } from './QuickAdd';
 import { TaskEditor } from './TaskEditor';
 import { TaskItem, TaskList, UpcomingItem } from './TaskItem';
@@ -16,9 +16,22 @@ export function DayTasks({ date, today }: Props) {
   const { data, isPending, error } = useDay(date);
   const [editing, setEditing] = useState<Task | null>(null);
   const isPast = date < today;
+  const total = data ? data.open.length + data.done.length + data.missed.length : 0;
 
   return (
     <>
+      {/* How far through today you are (not shown for other days). */}
+      {data && date === today && total > 0 && (
+        <div className="day-progress" aria-label={`${data.done.length} of ${total} done`}>
+          <div className="day-progress__bar">
+            <span style={{ width: `${(data.done.length / total) * 100}%` }} />
+          </div>
+          <span className="day-progress__text">
+            {data.done.length} of {total} done
+          </span>
+        </div>
+      )}
+
       {!isPast && <QuickAdd scheduledDate={date} />}
 
       {error && <p className="form-error">{error.message}</p>}
@@ -26,11 +39,39 @@ export function DayTasks({ date, today }: Props) {
 
       {data && (
         <>
-          {data.open.length > 0 || data.upcoming.length > 0 ? (
+          {data.open.length > 0 ? (
+            // Open tasks grouped under their priority, then upcoming repeats.
+            PRIORITIES.filter((p) => data.open.some((t) => t.priority === p)).map((p) => {
+              const group = data.open.filter((t) => t.priority === p);
+              return (
+                <section key={p} className={`priority-group priority-${p}`}>
+                  <h2 className="priority-group__title">
+                    {p} <span>{group.length}</span>
+                  </h2>
+                  <TaskList>
+                    {group.map((t) => (
+                      <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
+                    ))}
+                  </TaskList>
+                </section>
+              );
+            }).concat(
+              data.upcoming.length > 0 ? (
+                <section key="upcoming" className="priority-group">
+                  <h2 className="priority-group__title">
+                    Repeats <span>{data.upcoming.length}</span>
+                  </h2>
+                  <TaskList>
+                    {data.upcoming.map((u) => (
+                      <UpcomingItem key={`${u.seriesId}-${u.date}`} item={u} />
+                    ))}
+                  </TaskList>
+                </section>
+              ) : [],
+            )
+          ) : data.upcoming.length > 0 ? (
+            // Only repeats coming up on this day.
             <TaskList>
-              {data.open.map((t) => (
-                <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
-              ))}
               {data.upcoming.map((u) => (
                 <UpcomingItem key={`${u.seriesId}-${u.date}`} item={u} />
               ))}
