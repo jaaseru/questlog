@@ -11,6 +11,7 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 - **Calendar.** A month grid that combines the journal (completed), today, planned days and due dates. Phones show counters per day; wider screens show task titles. Tap a day to see and edit its tasks below the grid.
 - **Repeating tasks.** Daily, weekly (every N weeks, or on chosen weekdays such as Mon and Thu), monthly or yearly. Each series is a **routine** (not done on its day → missed), a **chore with a fixed day** (rolls over until the next one is due, then missed) or a **flexible chore** (rolls over, and the next one is one period after completion). Series can end on a chosen date. Future occurrences show as previews; missed ones stay in the journal and can still be completed. See [How repeating tasks work](#how-repeating-tasks-work).
 - **Weather.** Today's page shows the weather now, the rest of today and the next three days for your location, under the day's tasks; the next three days' pages show that day's forecast. Data from [MET Norway](https://api.met.no/) (the forecasts behind yr.no). It's opt-in per device (**Use my location**, or the setting on the Account page); coordinates are rounded to about 1 km, sent only to fetch the forecast, and not stored on the server.
+- **Push notifications** (opt-in per device, on the Account page): when someone creates, changes, completes or deletes a task shared with you, and a morning summary of your day at a time you choose. Works on Android and desktop browsers, and on iPhone/iPad from the Home Screen app (iOS 16.4+). See [Notifications](#notifications).
 - **Backlog.** Tasks with no day. Tap **Today** to pull one in.
 - **History.** Completed tasks grouped by the day they were finished.
 - **Task details.** Title, notes, priority (urgent / high / medium / low), scheduled day, due date.
@@ -84,6 +85,7 @@ The API tests **wipe** the database they're pointed at. Give them a dedicated on
    | `DATABASE_URL`   | `${{Postgres.DATABASE_URL}}` (reference to the database)     |
    | `SESSION_SECRET` | Output of `openssl rand -hex 32`                             |
    | `APP_TIMEZONE`   | Your IANA zone, e.g. `Europe/Oslo` (when "today" ends)       |
+   | `VAPID_SUBJECT`  | Optional. Contact for push services, e.g. `https://your-site.up.railway.app` or `mailto:you@example.com` |
    | `WEATHER_USER_AGENT` | Optional. Sent to MET Norway, whose terms require an app name and contact, e.g. `questlog/1.0 (+https://your-site.up.railway.app)` |
 
 4. Under **Networking**, generate a public domain. The health check is `/api/health`.
@@ -148,6 +150,16 @@ Open a task that's on a day, choose **Repeat**, and pick how often and what happ
 - Deleting an occurrence removes just that one. For a flexible series it counts as skipping: the next one is a period from today.
 - **Stop repeating** keeps past occurrences; the current one becomes an ordinary task.
 - Monthly on the 31st falls on the last day of shorter months; yearly on 29 February falls on the 28th in other years.
+
+## Notifications
+
+- Turn on per device under **Account → Notifications**. On iPhone/iPad, add Questlog to the Home Screen first (Share → Add to Home Screen) and open it from there; Safari tabs can't receive push.
+- **Shared tasks:** everyone else on a shared task is told when it's created (or they're added), its title/day/priority/due date/notes change, or it's completed, reopened or deleted. The person who made the change isn't notified.
+- **Morning summary:** at your chosen time (default 07:30, in `APP_TIMEZONE`), your open tasks for the day. Skipped on days with nothing planned, and not sent if the server only gets to it more than three hours late.
+- Preferences apply to all of a person's devices; each device opts in separately. Devices that uninstall or unsubscribe are forgotten automatically.
+- The server's push keys (VAPID) are generated on first start and kept in the database. To manage them yourself, set `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (`npx web-push generate-vapid-keys`). Changing them means every device has to turn notifications on again.
+- The server only sends to Apple, Google, Mozilla and Microsoft push services.
+- **Railway:** keep the service running (turn off app sleeping / serverless), or morning summaries won't be sent while it's asleep.
 
 ## How roll-over works
 

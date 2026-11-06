@@ -1,6 +1,13 @@
 import type { AdminUser, AuditEntry, Person, Task, TaskInput, TaskRepeat, Upcoming, User } from './types';
 import type { WeatherReport } from './weather';
 
+export interface NotificationPrefs {
+  shared: boolean;
+  morning: boolean;
+  /** 'HH:MM' */
+  morningTime: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -35,6 +42,18 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/account/password', json('POST', { currentPassword, newPassword })),
   signOutOthers: () => request<{ ok: true }>('/account/signout-others', json('POST')),
+
+  push: {
+    config: () =>
+      request<
+        | { enabled: false }
+        | { enabled: true; publicKey: string; devices: number; prefs: NotificationPrefs }
+      >('/push/config'),
+    subscribe: (sub: PushSubscriptionJSON) => request<{ ok: true }>('/push/subscribe', json('POST', sub)),
+    unsubscribe: (endpoint: string) => request<{ ok: true }>('/push/unsubscribe', json('POST', { endpoint })),
+    setPrefs: (prefs: Partial<NotificationPrefs>) => request<NotificationPrefs>('/push/prefs', json('PATCH', prefs)),
+    test: () => request<{ delivered: number }>('/push/test', json('POST')),
+  },
 
   admin: {
     users: () => request<{ users: AdminUser[] }>('/admin/users'),

@@ -1494,3 +1494,42 @@ code {
 .weather__credit:hover {
   text-decoration: underline;
 }
+
+/* ---------- Notifications ---------- */
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.check-row input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  flex: none;
+}
+
+.check-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check-row__time {
+  padding-left: 32px;
+}
+
+.check-row__time input[type='time'] {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.small {
+  font-size: 0.8rem;
+}

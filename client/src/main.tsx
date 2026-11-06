@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { ApiError } from './api';
 import { App } from './App';
+import { registerServiceWorker } from './push';
 import './styles.css';
 
 // Any 401 means the session ended: drop back to the login screen.
@@ -20,6 +21,8 @@ const queryClient = new QueryClient({
     queries: { staleTime: 30_000, retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2 },
   },
 });
+
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
