@@ -9,6 +9,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { DayPage } from './pages/DayPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { LoginPage } from './pages/LoginPage';
+import { ShoppingPage } from './pages/ShoppingPage';
 
 export function App() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me, staleTime: Infinity });
@@ -23,6 +24,7 @@ export function App() {
         <Route path="day/:date" element={<DayPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="backlog" element={<BacklogPage />} />
+        <Route path="shopping" element={<ShoppingPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="history" element={<HistoryPage />} />

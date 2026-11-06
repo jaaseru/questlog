@@ -23,6 +23,7 @@ import type { RolloverScheduler } from './rollover.js';
 import type { PushService } from './push.js';
 import { pushRouter } from './pushRoutes.js';
 import { SeriesRepo } from './series.js';
+import { ShoppingRepo, shoppingRouter } from './shopping.js';
 import { TaskRepo } from './tasks/repo.js';
 import { tasksRouter } from './tasks/routes.js';
 import { UserRepo } from './users.js';
@@ -89,6 +90,7 @@ export function createApp({ db, config, scheduler, clientDir, loginLimits, weath
   });
   app.use('/api/tasks', tasksRouter(new TaskRepo(db), new SeriesRepo(db), scheduler, config.timezone, push));
   app.use('/api/push', pushRouter(push));
+  app.use('/api/shopping', shoppingRouter(new ShoppingRepo(db)));
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Not found' });
   });

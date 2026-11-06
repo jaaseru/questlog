@@ -1,4 +1,4 @@
-import type { AdminUser, AuditEntry, Person, Task, TaskInput, TaskRepeat, Upcoming, User } from './types';
+import type { AdminUser, AuditEntry, Person, ShoppingItem, Task, TaskInput, TaskRepeat, Upcoming, User } from './types';
 import type { WeatherReport } from './weather';
 
 export interface NotificationPrefs {
@@ -42,6 +42,15 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/account/password', json('POST', { currentPassword, newPassword })),
   signOutOthers: () => request<{ ok: true }>('/account/signout-others', json('POST')),
+
+  shopping: {
+    list: () => request<{ items: ShoppingItem[]; retentionHours: number }>('/shopping'),
+    add: (title: string, parentId: string | null) =>
+      request<ShoppingItem>('/shopping', json('POST', { title, parentId })),
+    check: (id: string) => request<{ ok: true }>(`/shopping/${id}/check`, json('POST')),
+    uncheck: (id: string) => request<{ ok: true }>(`/shopping/${id}/uncheck`, json('POST')),
+    remove: (id: string) => request<void>(`/shopping/${id}`, json('DELETE')),
+  },
 
   push: {
     config: () =>

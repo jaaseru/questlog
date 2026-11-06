@@ -1515,9 +1515,100 @@ code {
   font-size: 0.8rem;
 }
 
+.nav__label-more {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .nav__label-more {
+    display: inline;
+  }
+}
+
 @media (min-width: 800px) and (hover: hover) {
   .nav__link:hover {
     background: var(--surface-2);
     color: var(--text);
   }
+}
+
+/* ---------- Shopping list ---------- */
+
+.shop-list > .shop-group {
+  border-bottom: 1px solid var(--border);
+}
+
+.shop-list > .shop-group:last-child {
+  border-bottom: none;
+}
+
+.shop-row {
+  --p: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 0 4px;
+}
+
+.shop-row.is-done .check::before {
+  background: var(--p);
+}
+
+.shop-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+}
+
+.shop-row__title {
+  overflow-wrap: anywhere;
+}
+
+.shop-row.is-done .shop-row__title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.shop-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  font-size: 0.78rem;
+}
+
+.icon-btn--small {
+  width: 36px;
+  height: 36px;
+}
+
+.shop-subs {
+  margin: -6px 0 6px 40px;
+  padding: 0 0 0 8px;
+  list-style: none;
+  border-left: 2px solid var(--border);
+}
+
+.shop-subs .check::before {
+  width: 18px;
+  height: 18px;
+}
+
+.shop-subs__add {
+  padding: 4px 6px 6px 4px;
+}
+
+.quick-add--sub {
+  margin: 0;
+}
+
+.quick-add--sub input {
+  min-height: 38px;
+  padding: 6px 10px;
+}
+
+.quick-add--sub .btn {
+  min-height: 38px;
+  width: 38px;
 }

@@ -1,13 +1,24 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { useMe } from '../queries';
 import { initials } from './SharePicker';
-import { BacklogIcon, CalendarIcon, HistoryIcon, ShieldIcon, TodayIcon } from './icons';
+import { BacklogIcon, CalendarIcon, CartIcon, HistoryIcon, ShieldIcon, TodayIcon } from './icons';
 
 const links = [
   { to: '/', label: 'Today', icon: <TodayIcon />, end: false },
   { to: '/calendar', label: 'Calendar', icon: <CalendarIcon />, end: true },
   { to: '/backlog', label: 'Backlog', icon: <BacklogIcon />, end: true },
   { to: '/history', label: 'History', icon: <HistoryIcon />, end: true },
+  // "Shopping list" is too wide for the phone tab bar; phones show "Shopping".
+  {
+    to: '/shopping',
+    label: (
+      <>
+        Shopping<span className="nav__label-more"> list</span>
+      </>
+    ),
+    icon: <CartIcon />,
+    end: true,
+  },
 ];
 
 export function Layout() {
