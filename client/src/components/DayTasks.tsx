@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useLayout } from '../layout';
 import { useDay } from '../queries';
 import { PRIORITIES, type Task } from '../types';
 import { QuickAdd } from './QuickAdd';
@@ -17,13 +16,12 @@ export function DayTasks({ date, today }: Props) {
   const { data, isPending, error } = useDay(date);
   const [editing, setEditing] = useState<Task | null>(null);
   const isPast = date < today;
-  const layout = useLayout();
   const total = data ? data.open.length + data.done.length + data.missed.length : 0;
 
   return (
     <>
-      {/* Layout B: how far through the day you are. */}
-      {layout === 'b' && data && total > 0 && (
+      {/* How far through today you are (not shown for other days). */}
+      {data && date === today && total > 0 && (
         <div className="day-progress" aria-label={`${data.done.length} of ${total} done`}>
           <div className="day-progress__bar">
             <span style={{ width: `${(data.done.length / total) * 100}%` }} />
@@ -41,8 +39,8 @@ export function DayTasks({ date, today }: Props) {
 
       {data && (
         <>
-          {layout === 'b' && data.open.length > 0 ? (
-            // Layout B: open tasks grouped under their priority.
+          {data.open.length > 0 ? (
+            // Open tasks grouped under their priority, then upcoming repeats.
             PRIORITIES.filter((p) => data.open.some((t) => t.priority === p)).map((p) => {
               const group = data.open.filter((t) => t.priority === p);
               return (
@@ -71,11 +69,9 @@ export function DayTasks({ date, today }: Props) {
                 </section>
               ) : [],
             )
-          ) : data.open.length > 0 || data.upcoming.length > 0 ? (
+          ) : data.upcoming.length > 0 ? (
+            // Only repeats coming up on this day.
             <TaskList>
-              {data.open.map((t) => (
-                <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
-              ))}
               {data.upcoming.map((u) => (
                 <UpcomingItem key={`${u.seriesId}-${u.date}`} item={u} />
               ))}
