@@ -85,8 +85,8 @@ function CalendarView({ today }: { today: string }) {
         <div className="calendar__weekno calendar__weekno--head" aria-hidden>
           Wk
         </div>
-        {weekdayNames().map((name) => (
-          <div key={name} className="calendar__weekday" aria-hidden>
+        {weekdayNames().map((name, i) => (
+          <div key={name} className={`calendar__weekday${i >= 5 ? ' is-weekend' : ''}`} aria-hidden>
             {name}
           </div>
         ))}
@@ -159,6 +159,7 @@ function CalendarCell({ date, today, inMonth, entries }: CellProps) {
     !inMonth && 'is-outside',
     date === today && 'is-today',
     date < today && 'is-past',
+    isWeekend(date) && 'is-weekend',
   ]
     .filter(Boolean)
     .join(' ');
@@ -190,4 +191,10 @@ function CalendarCell({ date, today, inMonth, entries }: CellProps) {
       </span>
     </Link>
   );
+}
+
+/** Saturday or Sunday. */
+function isWeekend(date: string): boolean {
+  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return day === 0 || day === 6;
 }

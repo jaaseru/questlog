@@ -772,6 +772,22 @@ textarea {
   }
 }
 
+/* Weekends: a light blue tint (today keeps its highlight). */
+.calendar__day.is-weekend:not(.is-outside) {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.calendar__day.is-weekend:not(.is-today):not(.is-past) .calendar__num,
+.calendar__weekday.is-weekend {
+  color: color-mix(in srgb, var(--accent) 55%, var(--muted));
+}
+
+@media (prefers-color-scheme: dark) {
+  .calendar__day.is-weekend:not(.is-outside) {
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  }
+}
+
 .calendar__day.is-outside {
   background: transparent;
   opacity: 0.45;
