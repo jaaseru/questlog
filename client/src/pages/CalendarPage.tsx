@@ -71,11 +71,13 @@ function CalendarView({ today }: { today: string }) {
           <ChevronRight />
         </button>
       </header>
-      {month !== thisMonth && (
-        <button className="back-today link-btn" onClick={() => showMonth(thisMonth)}>
-          Back to this month
-        </button>
-      )}
+      <div className="jump-slot">
+        {month !== thisMonth && (
+          <button className="back-today link-btn" onClick={() => showMonth(thisMonth)}>
+            Back to this month
+          </button>
+        )}
+      </div>
 
       {error && <p className="form-error">{error.message}</p>}
 

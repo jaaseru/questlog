@@ -38,11 +38,14 @@ function DayView({ date, today }: { date: string; today: string }) {
           <ChevronRight />
         </Link>
       </header>
-      {date !== today && (
-        <Link to="/" className="back-today">
-          Back to today
-        </Link>
-      )}
+      {/* The slot is always there, so nothing moves when the link appears. */}
+      <div className="jump-slot">
+        {date !== today && (
+          <Link to="/" className="back-today">
+            Back to today
+          </Link>
+        )}
+      </div>
 
       <DayTasks date={date} today={today} />
     </section>

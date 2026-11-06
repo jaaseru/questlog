@@ -345,10 +345,20 @@ textarea {
   text-align: center;
 }
 
+/* Reserved space for "Back to today" / "Back to this month", shown or not. */
+.jump-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+}
+
+.jump-slot + .quick-add,
+.jump-slot + .form-error + .quick-add {
+  margin-top: 4px;
+}
+
 .back-today {
-  display: block;
-  width: fit-content;
-  margin: 0 auto 8px;
   font-size: 0.85rem;
   color: var(--accent);
   text-decoration: none;
