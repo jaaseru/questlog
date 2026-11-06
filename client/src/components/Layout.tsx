@@ -1,9 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
-import { api } from '../api';
 import { useMe } from '../queries';
 import { initials } from './SharePicker';
-import { BacklogIcon, CalendarIcon, HistoryIcon, LogoutIcon, ShieldIcon, TodayIcon } from './icons';
+import { BacklogIcon, CalendarIcon, HistoryIcon, ShieldIcon, TodayIcon } from './icons';
 
 const links = [
   { to: '/', label: 'Today', icon: <TodayIcon />, end: false },
@@ -13,14 +11,8 @@ const links = [
 ];
 
 export function Layout() {
-  const qc = useQueryClient();
   const { pathname } = useLocation();
   const me = useMe();
-  const signOut = async () => {
-    await api.logout();
-    qc.clear();
-    qc.setQueryData(['me'], { signedIn: false });
-  };
 
   return (
     <div className="shell">
@@ -32,9 +24,6 @@ export function Layout() {
           </span>
           {me.displayName}
         </Link>
-        <button className="icon-btn" onClick={signOut} aria-label="Sign out">
-          <LogoutIcon />
-        </button>
       </header>
 
       <nav className="nav" aria-label="Main">
@@ -65,10 +54,6 @@ export function Layout() {
             </span>
             <span>{me.displayName}</span>
           </NavLink>
-          <button className="nav__link" onClick={signOut}>
-            <LogoutIcon />
-            <span>Sign out</span>
-          </button>
         </div>
       </nav>
 

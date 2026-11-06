@@ -1,7 +1,8 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
+import { LogoutIcon } from '../components/icons';
 import { initials } from '../components/SharePicker';
 import { useMe } from '../queries';
 
@@ -35,6 +36,7 @@ export function AccountPage() {
 
       <ChangePassword />
       <SignOutOthers />
+      <SignOut />
     </section>
   );
 }
@@ -96,6 +98,27 @@ function SignOutOthers() {
       {signOut.isSuccess && <p className="form-ok">Done. Everywhere else is signed out.</p>}
       <button className="btn" onClick={() => signOut.mutate()} disabled={signOut.isPending}>
         Sign out other devices
+      </button>
+    </div>
+  );
+}
+
+function SignOut() {
+  const qc = useQueryClient();
+  const signOut = useMutation({
+    mutationFn: api.logout,
+    onSuccess: () => {
+      // Flip to the login screen first, then drop everyone else's cached data.
+      qc.setQueryData(['me'], { signedIn: false });
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+    },
+  });
+  return (
+    <div className="card form-stack">
+      {signOut.isError && <p className="form-error">{signOut.error.message}</p>}
+      <button className="btn btn--signout" onClick={() => signOut.mutate()} disabled={signOut.isPending}>
+        <LogoutIcon />
+        Sign out
       </button>
     </div>
   );
