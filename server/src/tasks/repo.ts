@@ -104,7 +104,11 @@ export class TaskRepo {
   ): Promise<{ open: Task[]; done: Task[]; missed: Task[]; dueElsewhere: Task[] }> {
     const [open, done, missed, dueElsewhere] = await Promise.all([
       this.select(`t.status = 'open' AND t.scheduled_date = $2 ORDER BY ${BY_PRIORITY}`, [userId, date]),
-      this.select(`t.status = 'done' AND t.completed_on = $2 ORDER BY t.completed_at`, [userId, date]),
+      // Done on this day, or planned for this day and done early (or late): both belong here.
+      this.select(
+        `t.status = 'done' AND (t.completed_on = $2 OR t.scheduled_date = $2) ORDER BY t.completed_at`,
+        [userId, date],
+      ),
       this.select(`t.status = 'missed' AND t.scheduled_date = $2 ORDER BY ${BY_PRIORITY}`, [userId, date]),
       this.select(
         `t.status = 'open' AND t.due_date = $2 AND t.scheduled_date IS DISTINCT FROM $2 ORDER BY ${BY_PRIORITY}`,
@@ -128,7 +132,7 @@ export class TaskRepo {
 
   /**
    * Everything a calendar needs for a date range (inclusive):
-   * - done: tasks completed in the range (the journal)
+   * - done: tasks completed in the range, or planned in the range and completed (early or late)
    * - open: open tasks on a day list in the range (today and planned days)
    * - due: open tasks with a due date in the range (deadline markers)
    */
@@ -139,7 +143,11 @@ export class TaskRepo {
   ): Promise<{ done: Task[]; open: Task[]; due: Task[]; missed: Task[] }> {
     const params = [userId, from, to];
     const [done, open, due, missed] = await Promise.all([
-      this.select(`t.status = 'done' AND t.completed_on BETWEEN $2 AND $3 ORDER BY t.completed_on, t.completed_at`, params),
+      this.select(
+        `t.status = 'done' AND (t.completed_on BETWEEN $2 AND $3 OR t.scheduled_date BETWEEN $2 AND $3)
+         ORDER BY t.completed_on, t.completed_at`,
+        params,
+      ),
       this.select(
         `t.status = 'open' AND t.scheduled_date BETWEEN $2 AND $3 ORDER BY t.scheduled_date, ${BY_PRIORITY}`,
         params,

@@ -46,7 +46,11 @@ function CalendarView({ today }: { today: string }) {
       if (!e) map.set(date, (e = { done: [], open: [], due: [], missed: [], upcoming: [] }));
       return e;
     };
-    for (const t of data?.done ?? []) entry(t.completedOn!).done.push(t);
+    for (const t of data?.done ?? []) {
+      // Show it on the day it was done and, if different, on the day it was planned for.
+      entry(t.completedOn!).done.push(t);
+      if (t.scheduledDate && t.scheduledDate !== t.completedOn) entry(t.scheduledDate).done.push(t);
+    }
     for (const t of data?.open ?? []) entry(t.scheduledDate!).open.push(t);
     // A deadline is only worth its own marker when the task isn't already listed on that day.
     for (const t of data?.due ?? []) if (t.scheduledDate !== t.dueDate) entry(t.dueDate!).due.push(t);

@@ -116,7 +116,7 @@ export function DayTasks({ date, today }: Props) {
               <h2 className="section-title">Completed · {data.done.length}</h2>
               <TaskList>
                 {data.done.map((t) => (
-                  <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
+                  <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} viewDate={date} />
                 ))}
               </TaskList>
             </>
