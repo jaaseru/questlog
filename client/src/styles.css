@@ -772,6 +772,16 @@ textarea {
   }
 }
 
+/* Weekends: a softer background and lighter numbers (today keeps its highlight). */
+.calendar__day.is-weekend:not(.is-outside) {
+  background: color-mix(in srgb, var(--surface) 50%, var(--bg));
+}
+
+.calendar__day.is-weekend:not(.is-today) .calendar__num,
+.calendar__weekday.is-weekend {
+  color: color-mix(in srgb, var(--muted) 75%, var(--bg));
+}
+
 .calendar__day.is-outside {
   background: transparent;
   opacity: 0.45;
