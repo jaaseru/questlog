@@ -1373,3 +1373,124 @@ code {
   align-self: stretch;
   color: var(--danger);
 }
+
+/* ---------- Weather ---------- */
+
+.weather {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px 10px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface) 70%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.weather--prompt {
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.weather__prompt-emoji {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.weather__today {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.weather__emoji {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.weather__emoji--big {
+  font-size: 2.6rem;
+}
+
+.weather__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.weather__now {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.weather__temp {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.85rem;
+}
+
+.weather__ahead {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.weather__ahead li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.weather__day {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.weather__range {
+  font-variant-numeric: tabular-nums;
+}
+
+.weather__rain {
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.weather--compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.weather--compact .weather__credit {
+  flex-basis: 100%;
+}
+
+.weather__credit {
+  align-self: flex-end;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.weather__credit:hover {
+  text-decoration: underline;
+}

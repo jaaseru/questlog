@@ -5,6 +5,7 @@ import { api } from '../api';
 import { LogoutIcon } from '../components/icons';
 import { initials } from '../components/SharePicker';
 import { useMe } from '../queries';
+import { useWeatherLocation } from '../weather';
 
 export function AccountPage() {
   const me = useMe();
@@ -34,6 +35,7 @@ export function AccountPage() {
         </Link>
       )}
 
+      <WeatherSetting />
       <ChangePassword />
       <SignOutOthers />
       <SignOut />
@@ -119,6 +121,23 @@ function SignOut() {
       <button className="btn btn--signout" onClick={() => signOut.mutate()} disabled={signOut.isPending}>
         <LogoutIcon />
         Sign out
+      </button>
+    </div>
+  );
+}
+
+function WeatherSetting() {
+  const { pref, enable, disable } = useWeatherLocation();
+  const on = pref === 'on';
+  return (
+    <div className="card form-stack">
+      <h2 className="card__title">Weather</h2>
+      <p className="muted">
+        Shows the forecast for where you are on today's page and the next three days. Your location is rounded to about a
+        kilometre, used only to fetch the forecast, and remembered only on this device.
+      </p>
+      <button className="btn" onClick={on ? disable : enable}>
+        {on ? 'Turn off weather on this device' : 'Turn on weather'}
       </button>
     </div>
   );

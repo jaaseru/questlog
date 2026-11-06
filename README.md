@@ -10,6 +10,7 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 - **Automatic roll-over.** Open tasks left on a past day move onto today. They get a "↻ since …" badge, and the roll-over is logged.
 - **Calendar.** A month grid that combines the journal (completed), today, planned days and due dates. Phones show counters per day; wider screens show task titles. Tap a day to see and edit its tasks below the grid.
 - **Repeating tasks.** Daily, weekly (every N weeks, or on chosen weekdays such as Mon and Thu), monthly or yearly. Each series is a **routine** (not done on its day → missed), a **chore with a fixed day** (rolls over until the next one is due, then missed) or a **flexible chore** (rolls over, and the next one is one period after completion). Series can end on a chosen date. Future occurrences show as previews; missed ones stay in the journal and can still be completed. See [How repeating tasks work](#how-repeating-tasks-work).
+- **Weather.** Today's page shows the weather now, the rest of today and the next three days for your location, under the day's tasks; the next three days' pages show that day's forecast. Data from [MET Norway](https://api.met.no/) (the forecasts behind yr.no). It's opt-in per device (**Use my location**, or the setting on the Account page); coordinates are rounded to about 1 km, sent only to fetch the forecast, and not stored on the server.
 - **Backlog.** Tasks with no day. Tap **Today** to pull one in.
 - **History.** Completed tasks grouped by the day they were finished.
 - **Task details.** Title, notes, priority (urgent / high / medium / low), scheduled day, due date.
@@ -83,6 +84,7 @@ The API tests **wipe** the database they're pointed at. Give them a dedicated on
    | `DATABASE_URL`   | `${{Postgres.DATABASE_URL}}` (reference to the database)     |
    | `SESSION_SECRET` | Output of `openssl rand -hex 32`                             |
    | `APP_TIMEZONE`   | Your IANA zone, e.g. `Europe/Oslo` (when "today" ends)       |
+   | `WEATHER_USER_AGENT` | Optional. Sent to MET Norway, whose terms require an app name and contact, e.g. `questlog/1.0 (+https://your-site.up.railway.app)` |
 
 4. Under **Networking**, generate a public domain. The health check is `/api/health`.
 5. Create your account; see [Managing users](#managing-users).

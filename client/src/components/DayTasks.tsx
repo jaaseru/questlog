@@ -4,6 +4,7 @@ import type { Task } from '../types';
 import { QuickAdd } from './QuickAdd';
 import { TaskEditor } from './TaskEditor';
 import { TaskItem, TaskList, UpcomingItem } from './TaskItem';
+import { WeatherCard } from './WeatherCard';
 
 interface Props {
   date: string;
@@ -56,6 +57,9 @@ export function DayTasks({ date, today, dueElsewhere = [] }: Props) {
               </TaskList>
             </>
           )}
+
+          {/* Weather sits under the day's tasks and above what's already done. */}
+          <WeatherCard date={date} today={today} />
 
           {data.missed.length > 0 && (
             <>

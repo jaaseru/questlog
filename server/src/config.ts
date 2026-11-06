@@ -5,6 +5,8 @@ export interface AppConfig {
   /** Only used once, to create the first user when upgrading from the single-password version. */
   appPassword: string;
   adminUsername: string;
+  /** Sent to MET Norway, whose terms require an app name and a way to contact its operator. */
+  weatherUserAgent: string;
   sessionSecret: string;
   timezone: string;
   isProduction: boolean;
@@ -17,6 +19,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseSsl: env.DATABASE_SSL === 'true',
     appPassword: env.APP_PASSWORD ?? '',
     adminUsername: (env.ADMIN_USERNAME ?? 'admin').trim().toLowerCase(),
+    weatherUserAgent: env.WEATHER_USER_AGENT?.trim() || 'questlog/1.0 (+https://github.com/jaaseru/questlog)',
     sessionSecret: env.SESSION_SECRET ?? '',
     timezone: env.APP_TIMEZONE ?? 'UTC',
     isProduction: env.NODE_ENV === 'production',

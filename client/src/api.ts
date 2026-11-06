@@ -1,4 +1,5 @@
 import type { AdminUser, AuditEntry, Person, Task, TaskInput, TaskRepeat, Upcoming, User } from './types';
+import type { WeatherReport } from './weather';
 
 export class ApiError extends Error {
   constructor(
@@ -48,6 +49,7 @@ export const api = {
   },
   logout: () => request<{ ok: true }>('/auth/logout', json('POST')),
   meta: () => request<{ today: string; timezone: string }>('/meta'),
+  weather: (lat: number, lon: number) => request<WeatherReport>(`/weather?lat=${lat}&lon=${lon}`),
 
   day: (date: string) =>
     request<{ date: string; today: string; open: Task[]; done: Task[]; missed: Task[]; upcoming: Upcoming[] }>(
