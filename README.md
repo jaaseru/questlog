@@ -23,6 +23,18 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 
 See [ROADMAP.md](ROADMAP.md) for possible future features, grouped by theme with rough sizes and a suggested order.
 
+## Documentation
+
+| Document | What's in it |
+| --- | --- |
+| [Tech stack](docs/tech-stack.md) | Every technology and version, why it's used, repo layout, build and deploy pipeline |
+| [Architecture](docs/architecture.md) | System diagram, request pipeline, API map, server modules, client structure, background jobs |
+| [Data model](docs/data-model.md) | Entity-relationship diagram of all tables, what each table is for, where rules are enforced |
+| [Flows](docs/flows.md) | Diagrams of sign-in and sessions, a task's life, the daily cycle, repeating tasks, sharing and notifications, weather, shopping list, admin actions |
+| [Managing users](docs/managing-users.md) | Admin page and command-line guide |
+
+Diagrams are written in [Mermaid](https://mermaid.js.org/), which GitHub draws when you view the files.
+
 ## Stack
 
 | Part      | Tech                                                         |
