@@ -1612,3 +1612,300 @@ code {
   min-height: 38px;
   width: 38px;
 }
+
+/* ======================================================================
+   Layout previews (?layout=a / ?layout=b). The default look is unchanged.
+   ====================================================================== */
+
+/* ---------- A · Calm cards ---------- */
+
+[data-layout='a'] .day-header {
+  margin: 12px 0 4px;
+}
+
+[data-layout='a'] .day-header__title {
+  order: -1;
+  text-align: left;
+}
+
+[data-layout='a'] .day-header h1 {
+  font-size: 2.1rem;
+  letter-spacing: -0.03em;
+}
+
+[data-layout='a'] .page-header h1 {
+  font-size: 2.1rem;
+  letter-spacing: -0.03em;
+}
+
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 10px 0 2px;
+}
+
+.week-strip__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0 6px;
+  border-radius: 14px;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.week-strip__day.is-past {
+  color: var(--muted);
+  background: transparent;
+}
+
+.week-strip__day.is-today .week-strip__num {
+  color: var(--accent);
+}
+
+.week-strip__day.is-selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.week-strip__day.is-selected .week-strip__num {
+  color: inherit;
+}
+
+.week-strip__name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.week-strip__num {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.week-strip__dots {
+  display: flex;
+  gap: 3px;
+  height: 5px;
+}
+
+.week-strip__dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+/* Each task its own card with a priority edge. */
+[data-layout='a'] .task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+[data-layout='a'] .task-list > .task,
+[data-layout='a'] .task-list > .shop-group {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--p, var(--accent));
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+[data-layout='a'] .task-list > .task.is-done {
+  border-left-color: var(--border);
+}
+
+[data-layout='a'] .task__body {
+  padding: 14px 0;
+}
+
+[data-layout='a'] .weather {
+  border-radius: 18px;
+}
+
+/* Floating tab bar on phones. */
+@media (max-width: 799px) {
+  [data-layout='a'] .nav {
+    inset: auto 12px calc(10px + env(safe-area-inset-bottom)) 12px;
+    height: var(--nav-h);
+    padding-bottom: 0;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  }
+
+  [data-layout='a'] .main {
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 40px);
+  }
+}
+
+[data-layout='a'] .calendar__day {
+  border-radius: 14px;
+}
+
+[data-layout='a'] .calendar__day.is-today {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
+/* ---------- B · Planner (compact) ---------- */
+
+[data-layout='b'] {
+  font-size: 15px;
+}
+
+[data-layout='b'] .day-header {
+  margin: 4px 0 0;
+}
+
+[data-layout='b'] .day-header h1 {
+  font-size: 1.25rem;
+}
+
+[data-layout='b'] .day-header__title p {
+  font-size: 0.8rem;
+}
+
+[data-layout='b'] .jump-slot {
+  height: 20px;
+}
+
+.day-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 6px;
+}
+
+.day-progress__bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.day-progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--low);
+}
+
+.day-progress__text {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.priority-group + .priority-group {
+  margin-top: 12px;
+}
+
+.priority-group__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--p, var(--muted));
+}
+
+.priority-group__title span {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--p, var(--muted)) 14%, transparent);
+  font-size: 0.7rem;
+}
+
+/* Denser rows: chips sit on the same line as the title. */
+[data-layout='b'] .task {
+  padding-right: 10px;
+}
+
+[data-layout='b'] .check {
+  width: 38px;
+  height: 38px;
+  margin: 0;
+}
+
+[data-layout='b'] .check::before {
+  width: 18px;
+  height: 18px;
+}
+
+[data-layout='b'] .task__body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 7px 0;
+}
+
+[data-layout='b'] .chip {
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+/* Priority is already the group heading. */
+[data-layout='b'] .priority-group .chip--urgent,
+[data-layout='b'] .priority-group .chip--high,
+[data-layout='b'] .priority-group .chip--low {
+  display: none;
+}
+
+[data-layout='b'] .quick-add {
+  margin: 6px 0 12px;
+}
+
+[data-layout='b'] .quick-add input,
+[data-layout='b'] .quick-add .btn {
+  min-height: 40px;
+}
+
+[data-layout='b'] .quick-add .btn {
+  width: 40px;
+}
+
+[data-layout='b'] .section-title {
+  margin: 16px 0 6px;
+}
+
+[data-layout='b'] .calendar__day {
+  min-height: 46px;
+  border-radius: 8px;
+}
+
+[data-layout='b'] .shop-row__text {
+  padding: 6px 0;
+}
+
+[data-layout='b'] .page-header h1 {
+  font-size: 1.35rem;
+}
+
+@media (max-width: 799px) {
+  [data-layout='b'] {
+    --nav-h: 56px;
+  }
+
+  [data-layout='b'] .nav__link {
+    font-size: 0.68rem;
+  }
+}

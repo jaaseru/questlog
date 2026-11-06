@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { ApiError } from './api';
 import { App } from './App';
+import { applyLayout } from './layout';
 import { registerServiceWorker } from './push';
 import './styles.css';
 
@@ -23,6 +24,7 @@ const queryClient = new QueryClient({
 });
 
 registerServiceWorker();
+applyLayout();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

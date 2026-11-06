@@ -2,6 +2,8 @@ import { Link, Navigate, useParams } from 'react-router';
 import { DayTasks } from '../components/DayTasks';
 import { ChevronLeft, ChevronRight } from '../components/icons';
 import { addDays, isIsoDate, isoWeek, longDate, relativeDayName, weekdayName } from '../dates';
+import { WeekStrip } from '../components/WeekStrip';
+import { useLayout } from '../layout';
 import { useToday } from '../queries';
 
 export function DayPage() {
@@ -19,6 +21,7 @@ function DayView({ date, today }: { date: string; today: string }) {
   // "Today" / "Tomorrow" / "Yesterday" don't say which weekday it is, so add it below.
   const weekday = weekdayName(date);
   const dayHref = (d: string) => (d === today ? '/' : `/day/${d}`);
+  const layout = useLayout();
 
   return (
     <section className="page">
@@ -38,6 +41,7 @@ function DayView({ date, today }: { date: string; today: string }) {
           <ChevronRight />
         </Link>
       </header>
+      {layout === 'a' && <WeekStrip date={date} today={today} />}
       {/* The slot is always there, so nothing moves when the link appears. */}
       <div className="jump-slot">
         {date !== today && (
