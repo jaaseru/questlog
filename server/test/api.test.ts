@@ -179,6 +179,25 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
       ]);
     });
 
+    it('shows a task completed ahead of time as done on its planned day too', async () => {
+      const planned = addDays(today, 2);
+      const { body: task } = await as.alice.post('/api/tasks').send({ title: 'Early bird', scheduledDate: planned }).expect(201);
+      await as.alice.post(`/api/tasks/${task.id}/complete`).expect(200);
+
+      const { body: plannedDay } = await as.alice.get(`/api/tasks/day/${planned}`).expect(200);
+      expect(plannedDay.open).toEqual([]);
+      expect(ids(plannedDay.done)).toEqual([task.id]);
+      // ...and on the day it was actually done.
+      const { body: todayPage } = await as.alice.get(`/api/tasks/day/${today}`).expect(200);
+      expect(ids(todayPage.done)).toEqual([task.id]);
+      // The calendar returns it once; the client places it on both days.
+      const { body: cal } = await as.alice.get(`/api/tasks/calendar?from=${planned}&to=${planned}`).expect(200);
+      expect(ids(cal.done)).toEqual([task.id]);
+      // History stays by completion day.
+      const { body: history } = await as.alice.get(`/api/tasks/history?from=${planned}&to=${planned}`).expect(200);
+      expect(history.tasks).toEqual([]);
+    });
+
     it('logs reschedules and deletes tasks', async () => {
       const { body: task } = await as.alice.post('/api/tasks').send({ title: 'Later' }).expect(201);
       const tomorrow = addDays(today, 1);

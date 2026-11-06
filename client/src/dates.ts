@@ -32,6 +32,11 @@ export function longDate(date: string, today: string): string {
   });
 }
 
+/** e.g. "Sun, Nov 8" (weekday, day and month in the user's locale). */
+export function dayLabel(date: string): string {
+  return asUtc(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
 /** e.g. "4 Nov" */
 export function shortDate(date: string): string {
   return asUtc(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });

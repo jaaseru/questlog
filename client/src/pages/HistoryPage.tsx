@@ -51,7 +51,7 @@ function HistoryView({ today }: { today: string }) {
           </h2>
           <TaskList>
             {tasks.map((t) => (
-              <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} />
+              <TaskItem key={t.id} task={t} today={today} onOpen={setEditing} viewDate={t.completedOn ?? undefined} />
             ))}
           </TaskList>
         </div>

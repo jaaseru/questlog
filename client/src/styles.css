@@ -1763,3 +1763,10 @@ code {
     font-size: 0.68rem;
   }
 }
+
+.chip--elsewhere {
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--border);
+  line-height: calc(1.6em - 2px);
+}

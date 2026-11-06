@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { shortDate } from '../dates';
+import { dayLabel, shortDate } from '../dates';
 import { useMe, useToggleTask, useUsers } from '../queries';
 import { KIND_SHORT, repeatChip } from '../repeat';
 import type { Task, Upcoming } from '../types';
@@ -10,9 +10,11 @@ interface Props {
   today: string;
   onOpen: (task: Task) => void;
   action?: ReactNode;
+  /** The day whose list this row is shown in; used to explain tasks done on a different day than planned. */
+  viewDate?: string;
 }
 
-export function TaskItem({ task, today, onOpen, action }: Props) {
+export function TaskItem({ task, today, onOpen, action, viewDate }: Props) {
   const toggle = useToggleTask();
   const me = useMe();
   const { byId } = useUsers();
@@ -59,6 +61,14 @@ export function TaskItem({ task, today, onOpen, action }: Props) {
             </span>
           )}
           {done && completedBy && <span className="chip">done by {completedBy}</span>}
+          {/* Done on a different day than planned: it's listed on both days, so say which is which. */}
+          {done && viewDate && task.completedOn && task.scheduledDate && task.scheduledDate !== task.completedOn && (
+            <span className="chip chip--elsewhere">
+              {viewDate === task.scheduledDate
+                ? `done ${dayLabel(task.completedOn)}`
+                : `planned for ${dayLabel(task.scheduledDate)}`}
+            </span>
+          )}
           {task.notes && <span className="chip chip--notes" aria-label="Has notes">notes</span>}
         </span>
       </button>
