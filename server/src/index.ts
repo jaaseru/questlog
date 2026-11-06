@@ -5,6 +5,7 @@ import { createPool } from './db.js';
 import { migrate } from './migrate.js';
 import { loadVapidKeys, PushService, webPushSender } from './push.js';
 import { createRolloverScheduler } from './rollover.js';
+import { ShoppingRepo } from './shopping.js';
 import { TaskRepo } from './tasks/repo.js';
 import { bootstrapFirstUser, UserRepo } from './users.js';
 
@@ -28,11 +29,13 @@ const push = new PushService(
   log,
 );
 const tasks = new TaskRepo(db);
+const shopping = new ShoppingRepo(db);
 const morningTimer = setInterval(() => {
   scheduler
     .ensure() // make sure today's roll-overs and repeats exist first
     .then(() => push.sendMorningSummaries(config.timezone, new Date(), (userId, day) => tasks.listForDay(userId, day)))
     .then((n) => n && log(`Sent ${n} morning summary notification(s)`))
+    .then(() => shopping.purgeExpired())
     .catch((err) => log(`Morning summaries failed: ${err}`));
 }, 60_000);
 morningTimer.unref();

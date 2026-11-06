@@ -1,6 +1,17 @@
 export const PRIORITIES = ['urgent', 'high', 'medium', 'low'] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
+export interface ShoppingItem {
+  id: string;
+  /** The item this is a sub-item of, if any (one level deep). */
+  parentId: string | null;
+  title: string;
+  checkedAt: string | null;
+  checkedBy: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   username: string;

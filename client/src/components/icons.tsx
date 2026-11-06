@@ -24,6 +24,23 @@ export const CalendarIcon = () => (
     <path d="M3 9h18M8 2v4M16 2v4M7.5 13h.01M12 13h.01M16.5 13h.01M7.5 17h.01M12 17h.01" />
   </svg>
 );
+export const CartIcon = () => (
+  <svg {...base}>
+    <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.5L21 8H6.2" />
+    <circle cx="10" cy="20" r="1.3" />
+    <circle cx="17" cy="20" r="1.3" />
+  </svg>
+);
+export const XIcon = () => (
+  <svg {...base} width={18} height={18}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
+export const SubItemIcon = () => (
+  <svg {...base} width={18} height={18}>
+    <path d="M6 4v9a3 3 0 0 0 3 3h9M15 12l4 4-4 4" />
+  </svg>
+);
 export const BacklogIcon = () => (
   <svg {...base}>
     <path d="M4 6h16M4 12h16M4 18h10" />
