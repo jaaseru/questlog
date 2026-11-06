@@ -20,6 +20,8 @@ import { todayIn } from './dates.js';
 import type { Db } from './db.js';
 import { HttpError } from './errors.js';
 import type { RolloverScheduler } from './rollover.js';
+import type { PushService } from './push.js';
+import { pushRouter } from './pushRoutes.js';
 import { SeriesRepo } from './series.js';
 import { TaskRepo } from './tasks/repo.js';
 import { tasksRouter } from './tasks/routes.js';
@@ -35,9 +37,11 @@ export interface AppDeps {
   /** Override sign-in throttling (tests sign in far more often than people do). */
   loginLimits?: LoginLimits;
   weather?: WeatherService;
+  /** Web Push; without it, notification endpoints report that push is off. */
+  push?: PushService;
 }
 
-export function createApp({ db, config, scheduler, clientDir, loginLimits, weather }: AppDeps) {
+export function createApp({ db, config, scheduler, clientDir, loginLimits, weather, push }: AppDeps) {
   const app = express();
   app.set('trust proxy', 1); // Railway terminates TLS at its proxy
   app.disable('x-powered-by');
@@ -83,7 +87,8 @@ export function createApp({ db, config, scheduler, clientDir, loginLimits, weath
   app.get('/api/meta', (_req, res) => {
     res.json({ today: todayIn(config.timezone), timezone: config.timezone });
   });
-  app.use('/api/tasks', tasksRouter(new TaskRepo(db), new SeriesRepo(db), scheduler, config.timezone));
+  app.use('/api/tasks', tasksRouter(new TaskRepo(db), new SeriesRepo(db), scheduler, config.timezone, push));
+  app.use('/api/push', pushRouter(push));
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Not found' });
   });

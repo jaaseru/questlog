@@ -109,4 +109,5 @@ These give the most value for the effort, given what the app already has.
 - Admin page, account page, revocable sessions, sign-in throttling, audit log
 - Week numbers in the calendar and day header
 - Weather from MET Norway (yr.no) on today's page and the next three days
+- Push notifications (prototype): shared-task changes and a morning summary
 - Repeating tasks: daily/weekly/monthly/yearly, routines and chores (fixed or flexible day), repeat until, missed tracking

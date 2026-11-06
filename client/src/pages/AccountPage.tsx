@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
 import { LogoutIcon } from '../components/icons';
+import { NotificationSettings } from '../components/NotificationSettings';
 import { initials } from '../components/SharePicker';
 import { useMe } from '../queries';
 import { useWeatherLocation } from '../weather';
@@ -35,6 +36,7 @@ export function AccountPage() {
         </Link>
       )}
 
+      <NotificationSettings />
       <WeatherSetting />
       <ChangePassword />
       <SignOutOthers />

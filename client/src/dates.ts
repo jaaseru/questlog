@@ -16,6 +16,11 @@ export function relativeDayName(date: string, today: string): string {
   return asUtc(date).toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' });
 }
 
+/** e.g. "Friday" */
+export function weekdayName(date: string): string {
+  return asUtc(date).toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' });
+}
+
 /** e.g. "4 November 2026" (the year is dropped when it's the current one). */
 export function longDate(date: string, today: string): string {
   const sameYear = date.slice(0, 4) === today.slice(0, 4);

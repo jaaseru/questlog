@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { addDays, isIsoDate, todayIn } from '../dates.js';
 import { HttpError } from '../errors.js';
 import { FREQUENCIES, KINDS } from '../recurrence.js';
+import type { PushService } from '../push.js';
 import type { RolloverScheduler } from '../rollover.js';
 import { SeriesRepo } from '../series.js';
 import { PRIORITIES, TaskRepo } from './repo.js';
@@ -51,9 +52,17 @@ function currentUserId(req: Request): string {
   return req.user!.id;
 }
 
-export function tasksRouter(repo: TaskRepo, series: SeriesRepo, scheduler: RolloverScheduler, timeZone: string): Router {
+export function tasksRouter(
+  repo: TaskRepo,
+  series: SeriesRepo,
+  scheduler: RolloverScheduler,
+  timeZone: string,
+  push?: PushService,
+): Router {
   const router = Router();
   const today = () => todayIn(timeZone);
+  const actor = (req: Request) => ({ id: req.user!.id, displayName: req.user!.displayName });
+  const isShared = (t: { memberIds: string[] } | null) => (t?.memberIds.length ?? 0) > 1;
 
   // Make sure yesterday's leftovers have moved before anything reads or writes tasks.
   router.use(async (_req, _res, next) => {
@@ -112,33 +121,43 @@ export function tasksRouter(repo: TaskRepo, series: SeriesRepo, scheduler: Rollo
     if (scheduledDate !== null && scheduledDate < today()) {
       throw new HttpError(400, 'Open tasks cannot be scheduled on a past day');
     }
-    res.status(201).json(await repo.create(currentUserId(req), { ...input, scheduledDate }));
+    const task = await repo.create(currentUserId(req), { ...input, scheduledDate });
+    if (push && isShared(task)) push.background(() => push.taskCreated(actor(req), task, today()));
+    res.status(201).json(task);
   });
 
   router.patch('/:id', async (req, res) => {
     const userId = currentUserId(req);
     const id = idParam(req);
     const patch = updateSchema.parse(req.body);
-    if (patch.scheduledDate) {
-      const existing = (await repo.get(userId, id)) ?? notFound();
-      if (existing.status === 'open' && patch.scheduledDate < today()) {
-        throw new HttpError(400, 'Open tasks cannot be scheduled on a past day');
-      }
+    const before = (await repo.get(userId, id)) ?? notFound();
+    if (patch.scheduledDate && before.status === 'open' && patch.scheduledDate < today()) {
+      throw new HttpError(400, 'Open tasks cannot be scheduled on a past day');
     }
-    res.json((await repo.update(userId, id, patch)) ?? notFound());
+    const after = (await repo.update(userId, id, patch)) ?? notFound();
+    if (push && (isShared(before) || isShared(after))) {
+      push.background(() => push.taskUpdated(actor(req), before, after, patch, today()));
+    }
+    res.json(after);
   });
 
   router.post('/:id/complete', async (req, res) => {
     const userId = currentUserId(req);
     const id = idParam(req);
     // Completing an already-done task is a no-op that returns its current state.
-    res.json((await repo.complete(userId, id, today())) ?? (await repo.get(userId, id)) ?? notFound());
+    const done = await repo.complete(userId, id, today());
+    if (push && done && isShared(done)) push.background(() => push.taskCompleted(actor(req), done, today()));
+    res.json(done ?? (await repo.get(userId, id)) ?? notFound());
   });
 
   router.post('/:id/reopen', async (req, res) => {
     const userId = currentUserId(req);
     const id = idParam(req);
-    res.json((await repo.reopen(userId, id, today())) ?? (await repo.get(userId, id)) ?? notFound());
+    const reopened = await repo.reopen(userId, id, today());
+    if (push && reopened && isShared(reopened)) {
+      push.background(() => push.taskCompleted(actor(req), reopened, today(), true));
+    }
+    res.json(reopened ?? (await repo.get(userId, id)) ?? notFound());
   });
 
   // Make a task repeat, or change its rule. The task becomes the first occurrence.
@@ -158,7 +177,12 @@ export function tasksRouter(repo: TaskRepo, series: SeriesRepo, scheduler: Rollo
   });
 
   router.delete('/:id', async (req, res) => {
-    const result = await repo.delete(currentUserId(req), idParam(req), today());
+    const userId = currentUserId(req);
+    const before = await repo.get(userId, idParam(req));
+    const result = await repo.delete(userId, idParam(req), today());
+    if (push && result === 'deleted' && before && isShared(before)) {
+      push.background(() => push.taskDeleted(actor(req), before));
+    }
     if (result === 'not_found') notFound();
     if (result === 'forbidden') {
       throw new HttpError(403, 'Only the person who created a shared task can delete it. You can leave it instead.');

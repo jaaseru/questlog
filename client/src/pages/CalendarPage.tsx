@@ -1,16 +1,13 @@
 import { Fragment, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { DayTasks } from '../components/DayTasks';
 import { ChevronLeft, ChevronRight } from '../components/icons';
 import {
   addMonths,
-  isIsoDate,
   isIsoMonth,
   isoWeek,
   longDate,
   monthGrid,
   monthLabel,
-  relativeDayName,
   weekdayNames,
 } from '../dates';
 import { useCalendar, useToday } from '../queries';
@@ -35,10 +32,9 @@ export function CalendarPage() {
 
 function CalendarView({ today }: { today: string }) {
   const [params, setParams] = useSearchParams();
-  const dayParam = params.get('day');
   const monthParam = params.get('month');
-  const selected = dayParam && isIsoDate(dayParam) ? dayParam : today;
-  const month = monthParam && isIsoMonth(monthParam) ? monthParam : selected.slice(0, 7);
+  const thisMonth = today.slice(0, 7);
+  const month = monthParam && isIsoMonth(monthParam) ? monthParam : thisMonth;
 
   const grid = useMemo(() => monthGrid(month), [month]);
   const { data, error } = useCalendar(grid[0]!, grid[grid.length - 1]!);
@@ -59,27 +55,25 @@ function CalendarView({ today }: { today: string }) {
     return map;
   }, [data]);
 
-  const go = (next: { month?: string; day?: string }) => {
-    setParams({ month: next.month ?? month, day: next.day ?? selected }, { replace: true });
-  };
-  const selectedEntries = byDay.get(selected) ?? EMPTY;
+  // The month lives in the URL, so going back from a day returns to the same month.
+  const showMonth = (m: string) => setParams(m === thisMonth ? {} : { month: m }, { replace: true });
 
   return (
     <section className="page page--wide">
       <header className="day-header">
-        <button className="icon-btn" onClick={() => go({ month: addMonths(month, -1) })} aria-label="Previous month">
+        <button className="icon-btn" onClick={() => showMonth(addMonths(month, -1))} aria-label="Previous month">
           <ChevronLeft />
         </button>
         <div className="day-header__title">
           <h1>{monthLabel(month)}</h1>
         </div>
-        <button className="icon-btn" onClick={() => go({ month: addMonths(month, 1) })} aria-label="Next month">
+        <button className="icon-btn" onClick={() => showMonth(addMonths(month, 1))} aria-label="Next month">
           <ChevronRight />
         </button>
       </header>
-      {(month !== today.slice(0, 7) || selected !== today) && (
-        <button className="back-today link-btn" onClick={() => go({ month: today.slice(0, 7), day: today })}>
-          Back to today
+      {month !== thisMonth && (
+        <button className="back-today link-btn" onClick={() => showMonth(thisMonth)}>
+          Back to this month
         </button>
       )}
 
@@ -105,9 +99,7 @@ function CalendarView({ today }: { today: string }) {
               date={date}
               today={today}
               inMonth={date.startsWith(month)}
-              selected={date === selected}
               entries={byDay.get(date) ?? EMPTY}
-              onSelect={() => go({ day: date, month: date.slice(0, 7) })}
             />
           </Fragment>
         ))}
@@ -128,21 +120,6 @@ function CalendarView({ today }: { today: string }) {
         </span>
       </div>
 
-      <div className="agenda">
-        <header className="agenda__header">
-          <div>
-            <h2>{relativeDayName(selected, today)}</h2>
-            <p className="muted">
-              {longDate(selected, today)}
-              {selected < today && ' · Journal'}
-            </p>
-          </div>
-          <Link className="btn btn--small" to={selected === today ? '/' : `/day/${selected}`}>
-            Open day
-          </Link>
-        </header>
-        <DayTasks date={selected} today={today} dueElsewhere={selectedEntries.due} />
-      </div>
     </section>
   );
 }
@@ -151,12 +128,11 @@ interface CellProps {
   date: string;
   today: string;
   inMonth: boolean;
-  selected: boolean;
   entries: DayEntries;
-  onSelect: () => void;
 }
 
-function CalendarCell({ date, today, inMonth, selected, entries, onSelect }: CellProps) {
+/** One day in the grid; tapping it opens that day's page. */
+function CalendarCell({ date, today, inMonth, entries }: CellProps) {
   const { done, open, due, missed, upcoming } = entries;
   // Upcoming repeats count as planned: they become real tasks when the day comes.
   const planned = open.length + upcoming.length;
@@ -181,16 +157,14 @@ function CalendarCell({ date, today, inMonth, selected, entries, onSelect }: Cel
     !inMonth && 'is-outside',
     date === today && 'is-today',
     date < today && 'is-past',
-    selected && 'is-selected',
   ]
     .filter(Boolean)
     .join(' ');
 
   return (
-    <button
+    <Link
+      to={date === today ? '/' : `/day/${date}`}
       className={classes}
-      onClick={onSelect}
-      aria-pressed={selected}
       aria-label={`${longDate(date, today)}${date === today ? ' (today)' : ''}${summary ? `: ${summary}` : ''}`}
     >
       <span className="calendar__num">{Number(date.slice(8))}</span>
@@ -212,6 +186,6 @@ function CalendarCell({ date, today, inMonth, selected, entries, onSelect }: Cel
         ))}
         {titles.length > MAX_TITLES && <span className="calendar__more">+{titles.length - MAX_TITLES} more</span>}
       </span>
-    </button>
+    </Link>
   );
 }

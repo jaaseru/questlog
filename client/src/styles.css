@@ -738,6 +738,8 @@ textarea {
 }
 
 .calendar__day {
+  color: inherit;
+  text-decoration: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -761,9 +763,8 @@ textarea {
   opacity: 0.45;
 }
 
-.calendar__day.is-selected {
+.calendar__day.is-today {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .calendar__num {
@@ -854,28 +855,6 @@ textarea {
   gap: 6px;
 }
 
-.agenda {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.agenda__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.agenda__header h2 {
-  font-size: 1.25rem;
-  letter-spacing: -0.01em;
-}
-
-.agenda__header .btn {
-  text-decoration: none;
-}
-
 /* Wider screens: show task titles in the cells instead of counters. */
 @media (min-width: 800px) {
   .calendar {
@@ -901,10 +880,6 @@ textarea {
   .calendar__dots,
   .legend {
     display: none;
-  }
-
-  .agenda {
-    margin-top: 24px;
   }
 
   .calendar__titles {
@@ -1441,39 +1416,6 @@ code {
   font-size: 0.85rem;
 }
 
-.weather__ahead {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-  padding: 10px 0 0;
-  border-top: 1px solid var(--border);
-  list-style: none;
-}
-
-.weather__ahead li {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  text-align: center;
-  font-size: 0.85rem;
-}
-
-.weather__day {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.weather__range {
-  font-variant-numeric: tabular-nums;
-}
-
-.weather__rain {
-  font-size: 0.75rem;
-  color: var(--accent);
-}
-
 .weather--compact {
   flex-direction: row;
   flex-wrap: wrap;
@@ -1493,4 +1435,43 @@ code {
 
 .weather__credit:hover {
   text-decoration: underline;
+}
+
+/* ---------- Notifications ---------- */
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.check-row input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  flex: none;
+}
+
+.check-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check-row__time {
+  padding-left: 32px;
+}
+
+.check-row__time input[type='time'] {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.small {
+  font-size: 0.8rem;
 }

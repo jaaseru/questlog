@@ -1,6 +1,13 @@
 import type { AdminUser, AuditEntry, Person, Task, TaskInput, TaskRepeat, Upcoming, User } from './types';
 import type { WeatherReport } from './weather';
 
+export interface NotificationPrefs {
+  shared: boolean;
+  morning: boolean;
+  /** 'HH:MM' */
+  morningTime: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -36,6 +43,18 @@ export const api = {
     request<{ ok: true }>('/account/password', json('POST', { currentPassword, newPassword })),
   signOutOthers: () => request<{ ok: true }>('/account/signout-others', json('POST')),
 
+  push: {
+    config: () =>
+      request<
+        | { enabled: false }
+        | { enabled: true; publicKey: string; devices: number; prefs: NotificationPrefs }
+      >('/push/config'),
+    subscribe: (sub: PushSubscriptionJSON) => request<{ ok: true }>('/push/subscribe', json('POST', sub)),
+    unsubscribe: (endpoint: string) => request<{ ok: true }>('/push/unsubscribe', json('POST', { endpoint })),
+    setPrefs: (prefs: Partial<NotificationPrefs>) => request<NotificationPrefs>('/push/prefs', json('PATCH', prefs)),
+    test: () => request<{ delivered: number }>('/push/test', json('POST')),
+  },
+
   admin: {
     users: () => request<{ users: AdminUser[] }>('/admin/users'),
     create: (input: { username: string; displayName?: string; password: string }) =>
@@ -52,7 +71,15 @@ export const api = {
   weather: (lat: number, lon: number) => request<WeatherReport>(`/weather?lat=${lat}&lon=${lon}`),
 
   day: (date: string) =>
-    request<{ date: string; today: string; open: Task[]; done: Task[]; missed: Task[]; upcoming: Upcoming[] }>(
+    request<{
+      date: string;
+      today: string;
+      open: Task[];
+      done: Task[];
+      missed: Task[];
+      dueElsewhere: Task[];
+      upcoming: Upcoming[];
+    }>(
       `/tasks/day/${date}`,
     ),
   backlog: () => request<{ tasks: Task[] }>('/tasks/backlog'),
