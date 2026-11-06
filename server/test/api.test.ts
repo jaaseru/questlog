@@ -17,6 +17,7 @@ describe.skipIf(!databaseUrl)('API (needs TEST_DATABASE_URL)', () => {
     databaseSsl: false,
     appPassword: '',
     adminUsername: 'admin',
+    weatherUserAgent: 'questlog-test',
     sessionSecret: 's'.repeat(32),
     timezone: 'Europe/Oslo',
     isProduction: false,
