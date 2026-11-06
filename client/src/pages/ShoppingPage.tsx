@@ -93,10 +93,17 @@ export function ShoppingPage() {
       {open.length > 0 && (
         <ul className="task-list shop-list">
           {open.map((item) => {
-            const subs = children(item.id).filter((s) => !s.checkedAt);
+            const all = children(item.id);
+            const subs = all.filter((s) => !s.checkedAt);
+            const doneCount = all.length - subs.length;
             return (
               <li key={item.id} className="shop-group">
-                <ShopRow item={item} {...rowProps} onAddSub={() => setAddingTo(addingTo === item.id ? null : item.id)} />
+                <ShopRow
+                  item={item}
+                  {...rowProps}
+                  meta={doneCount > 0 ? `${doneCount} of ${all.length} checked off` : undefined}
+                  onAddSub={() => setAddingTo(addingTo === item.id ? null : item.id)}
+                />
                 {(subs.length > 0 || addingTo === item.id) && (
                   <ul className="shop-subs">
                     {subs.map((s) => (
