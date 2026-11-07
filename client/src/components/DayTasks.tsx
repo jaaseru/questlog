@@ -1,3 +1,4 @@
+import { QueryError } from './QueryError';
 import { useState } from 'react';
 import { useDay } from '../queries';
 import { PRIORITIES, type Task } from '../types';
@@ -34,7 +35,7 @@ export function DayTasks({ date, today }: Props) {
 
       {!isPast && <QuickAdd scheduledDate={date} />}
 
-      {error && <p className="form-error">{error.message}</p>}
+      <QueryError error={error} hasData={Boolean(data)} />
       {isPending && <p className="muted center">Loading…</p>}
 
       {data && (

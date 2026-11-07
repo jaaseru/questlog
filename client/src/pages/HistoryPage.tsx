@@ -1,3 +1,4 @@
+import { QueryError } from '../components/QueryError';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { TaskEditor } from '../components/TaskEditor';
@@ -38,7 +39,7 @@ function HistoryView({ today }: { today: string }) {
         </p>
       </header>
 
-      {error && <p className="form-error">{error.message}</p>}
+      <QueryError error={error} hasData={Boolean(data)} />
       {isPending && <p className="muted center">Loading…</p>}
       {data && groups.length === 0 && <p className="empty">Nothing completed in this period yet.</p>}
 

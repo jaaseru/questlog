@@ -1,3 +1,4 @@
+import { QueryError } from '../components/QueryError';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
@@ -40,7 +41,7 @@ function People() {
   return (
     <>
       <h2 className="section-title">People · {data?.users.length ?? '…'}</h2>
-      {error && <p className="form-error">{error.message}</p>}
+      <QueryError error={error} hasData={Boolean(data)} />
       <ul className="people">
         {data?.users.map((u) => <Person key={u.id} user={u} />)}
       </ul>
@@ -281,7 +282,7 @@ function Activity() {
   return (
     <>
       <h2 className="section-title">Recent activity</h2>
-      {error && <p className="form-error">{error.message}</p>}
+      <QueryError error={error} hasData={Boolean(data)} />
       {data && data.entries.length === 0 && <p className="empty">Nothing yet.</p>}
       {data && data.entries.length > 0 && (
         <ul className="card activity">

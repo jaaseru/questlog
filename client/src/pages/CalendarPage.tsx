@@ -1,3 +1,4 @@
+import { QueryError } from '../components/QueryError';
 import { Fragment, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { ChevronLeft, ChevronRight } from '../components/icons';
@@ -83,7 +84,7 @@ function CalendarView({ today }: { today: string }) {
         )}
       </div>
 
-      {error && <p className="form-error">{error.message}</p>}
+      <QueryError error={error} hasData={Boolean(data)} />
 
       <div className="calendar" role="group" aria-label={monthLabel(month)}>
         <div className="calendar__weekno calendar__weekno--head" aria-hidden>

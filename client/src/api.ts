@@ -10,22 +10,40 @@ export interface NotificationPrefs {
 
 export class ApiError extends Error {
   constructor(
+    /** HTTP status, or 0 when the server couldn't be reached at all. */
     public readonly status: number,
     message: string,
   ) {
     super(message);
   }
+
+  /** Worth trying again: rate-limited, a server/gateway hiccup, or no connection. */
+  get retryable(): boolean {
+    return this.status === 0 || this.status === 429 || this.status >= 500;
+  }
+}
+
+/** A readable message when the response didn't come with one from Questlog itself. */
+function fallbackMessage(status: number): string {
+  if (status === 429) return 'The hosting service is limiting requests right now (429). Questlog will try again.';
+  if (status === 502 || status === 503 || status === 504) return `Questlog isn't responding right now (${status}). It will try again.`;
+  return `Something went wrong (${status}).`;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    ...init,
-    credentials: 'same-origin',
-    headers: init.body ? { 'Content-Type': 'application/json', ...init.headers } : init.headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      ...init,
+      credentials: 'same-origin',
+      headers: init.body ? { 'Content-Type': 'application/json', ...init.headers } : init.headers,
+    });
+  } catch {
+    throw new ApiError(0, "Can't reach Questlog. Check your connection.");
+  }
   if (res.status === 204) return undefined as T;
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, body.error ?? `Request failed (${res.status})`);
+  if (!res.ok) throw new ApiError(res.status, body.error ?? fallbackMessage(res.status));
   return body as T;
 }
 

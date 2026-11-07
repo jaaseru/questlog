@@ -1,3 +1,4 @@
+import { QueryError } from '../components/QueryError';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api';
@@ -85,7 +86,7 @@ export function ShoppingPage() {
 
       <AddForm placeholder="Add an item…" parentId={null} />
 
-      {error && <p className="form-error">{error.message}</p>}
+      <QueryError error={error} hasData={Boolean(data)} />
       {toggle.error && <p className="form-error">{toggle.error.message}</p>}
       {isPending && <p className="muted center">Loading…</p>}
       {data && open.length === 0 && <p className="empty">{checked.length ? 'All done.' : 'The list is empty.'}</p>}
