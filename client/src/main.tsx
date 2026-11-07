@@ -18,7 +18,19 @@ const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError }),
   mutationCache: new MutationCache({ onError }),
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2 },
+    // Rate limits, server hiccups and lost connections usually pass: retry with growing waits
+    // (1 s, 2 s, 4 s). Other errors (bad input, not signed in…) won't change on retry.
+    queries: {
+      staleTime: 30_000,
+      retry: (count, err) => count < 3 && (!(err instanceof ApiError) || err.retryable),
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    },
+    // A 429 from the hosting edge means the request never reached Questlog, so changes are
+    // safe to resend. Other failures might have been applied already, so they aren't retried.
+    mutations: {
+      retry: (count, err) => count < 2 && err instanceof ApiError && err.status === 429,
+      retryDelay: (attempt) => 1000 * 2 ** attempt,
+    },
   },
 });
 

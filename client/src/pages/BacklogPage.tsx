@@ -1,3 +1,4 @@
+import { QueryError } from '../components/QueryError';
 import { useState } from 'react';
 import { QuickAdd } from '../components/QuickAdd';
 import { TaskEditor } from '../components/TaskEditor';
@@ -22,7 +23,7 @@ export function BacklogPage() {
 
       <QuickAdd scheduledDate={null} placeholder="Add to backlog…" />
 
-      {error && <p className="form-error">{error.message}</p>}
+      <QueryError error={error} hasData={Boolean(data)} />
       {isPending && <p className="muted center">Loading…</p>}
       {data && data.tasks.length === 0 && <p className="empty">The backlog is empty.</p>}
       {data && data.tasks.length > 0 && (

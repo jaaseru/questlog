@@ -1770,3 +1770,7 @@ code {
   border: 1px dashed var(--border);
   line-height: calc(1.6em - 2px);
 }
+
+.stale-note {
+  margin: 4px 0;
+}
