@@ -6,11 +6,10 @@ Mobile-first web app (it scales up to desktop) for planning each day, carrying u
 
 ## What works today
 
-- **Day lists.** Every day has its own todo list, with open tasks grouped under Urgent / High / Medium / Low (plus upcoming repeats) and, on today, a progress bar. Use ‹ › to move between days. Future days take tasks as reminders. Past days read as a journal of what was finished.
+- **Day lists.** Every day has its own todo list (swipe left/right on a phone to move between days), with open tasks grouped under Urgent / High / Medium / Low (plus upcoming repeats) and, on today, a progress bar. Use ‹ › to move between days. Future days take tasks as reminders. Past days read as a journal of what was finished.
 - **Automatic roll-over.** Open tasks left on a past day move onto today. They get a "↻ since …" badge, and the roll-over is logged.
-- **Calendar.** A month grid that combines the journal (completed), today, planned days and due dates. Phones show counters per day; wider screens show task titles. Tap a day to open it.
+- **Calendar.** Switch between a **Month** grid and a **List** of the next 8 weeks (planned tasks, due dates and repeats, grouped by day). The month grid combines the journal (completed), today, planned days and due dates. Phones show counters per day; wider screens show task titles. Tap a day to open it.
 - **Repeating tasks.** Daily, weekly (every N weeks, or on chosen weekdays such as Mon and Thu), monthly or yearly. Each series is a **routine** (not done on its day → missed), a **chore with a fixed day** (rolls over until the next one is due, then missed) or a **flexible chore** (rolls over, and the next one is one period after completion). Series can end on a chosen date. Future occurrences show as previews; missed ones stay in the journal and can still be completed. See [How repeating tasks work](#how-repeating-tasks-work).
-- **Weather.** Today's page shows the weather now and for the rest of today for your location, under the day's tasks; the pages for the next three days show that day's forecast. Data from [MET Norway](https://api.met.no/) (the forecasts behind yr.no). It's opt-in per device (**Use my location**, or the setting on the Account page); coordinates are rounded to about 1 km, sent only to fetch the forecast, and not stored on the server.
 - **Push notifications** (opt-in per device, on the Account page): when someone creates, changes, completes or deletes a task shared with you, and a morning summary of your day at a time you choose. Works on Android and desktop browsers, and on iPhone/iPad from the Home Screen app (iOS 16.4+). See [Notifications](#notifications).
 - **Shopping list.** One list shared by everyone. Anyone can add, remove and check off items. Items can have sub-items (one level, e.g. "Taco night" → tortillas, salsa). Checking an item checks its sub-items; an item is only checked off when it's checked itself, even if all its sub-items are done. Checked-off entries move to a *Checked off* group (with who checked them) and are deleted 12 hours later. Other people's changes appear within about 15 seconds.
 - **Backlog.** Tasks with no day. Tap **Today** to pull one in.
@@ -30,7 +29,7 @@ See [ROADMAP.md](ROADMAP.md) for possible future features, grouped by theme with
 | [Tech stack](docs/tech-stack.md) | Every technology and version, why it's used, repo layout, build and deploy pipeline |
 | [Architecture](docs/architecture.md) | System diagram, request pipeline, API map, server modules, client structure, background jobs |
 | [Data model](docs/data-model.md) | Entity-relationship diagram of all tables, what each table is for, where rules are enforced |
-| [Flows](docs/flows.md) | Diagrams of sign-in and sessions, a task's life, the daily cycle, repeating tasks, sharing and notifications, weather, shopping list, admin actions |
+| [Flows](docs/flows.md) | Diagrams of sign-in and sessions, a task's life, the daily cycle, repeating tasks, sharing and notifications, shopping list, admin actions |
 | [Managing users](docs/managing-users.md) | Admin page and command-line guide |
 
 Diagrams are written in [Mermaid](https://mermaid.js.org/), which GitHub draws when you view the files.
@@ -99,7 +98,6 @@ The API tests **wipe** the database they're pointed at. Give them a dedicated on
    | `SESSION_SECRET` | Output of `openssl rand -hex 32`                             |
    | `APP_TIMEZONE`   | Your IANA zone, e.g. `Europe/Oslo` (when "today" ends)       |
    | `VAPID_SUBJECT`  | Optional. Contact for push services, e.g. `https://your-site.up.railway.app` or `mailto:you@example.com` |
-   | `WEATHER_USER_AGENT` | Optional. Sent to MET Norway, whose terms require an app name and contact, e.g. `questlog/1.0 (+https://your-site.up.railway.app)` |
 
 4. Under **Networking**, generate a public domain. The health check is `/api/health`.
 5. Create your account; see [Managing users](#managing-users).

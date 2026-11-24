@@ -36,6 +36,14 @@ const queryClient = new QueryClient({
 
 registerServiceWorker();
 
+// Weather was removed: forget the opt-in and the rounded location phones had saved for it.
+try {
+  localStorage.removeItem('ql:weather');
+  localStorage.removeItem('ql:weather-coords');
+} catch {
+  /* storage unavailable: nothing saved to remove */
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

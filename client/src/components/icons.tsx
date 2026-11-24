@@ -41,6 +41,20 @@ export const SubItemIcon = () => (
     <path d="M6 4v9a3 3 0 0 0 3 3h9M15 12l4 4-4 4" />
   </svg>
 );
+export const GridIcon = () => (
+  <svg {...base} width={18} height={18}>
+    <rect x="3" y="4" width="18" height="17" rx="3" />
+    <path d="M3 9h18M9 9v12M15 9v12M3 15h18" />
+  </svg>
+);
+export const ListIcon = () => (
+  <svg {...base} width={18} height={18}>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <circle cx="4.5" cy="6" r="1" />
+    <circle cx="4.5" cy="12" r="1" />
+    <circle cx="4.5" cy="18" r="1" />
+  </svg>
+);
 export const BacklogIcon = () => (
   <svg {...base}>
     <path d="M4 6h16M4 12h16M4 18h10" />

@@ -1,7 +1,8 @@
 import { QueryError } from '../components/QueryError';
 import { Fragment, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ChevronLeft, ChevronRight } from '../components/icons';
+import { ChevronLeft, ChevronRight, GridIcon, ListIcon } from '../components/icons';
+import { UPCOMING_DAYS, UpcomingList } from '../components/UpcomingList';
 import {
   addMonths,
   isIsoMonth,
@@ -28,7 +29,58 @@ const MAX_TITLES = 3;
 export function CalendarPage() {
   const today = useToday();
   if (!today) return <p className="muted center">Loading…</p>;
-  return <CalendarView today={today} />;
+  return <CalendarPageInner today={today} />;
+}
+
+type CalendarMode = 'month' | 'list';
+const MODE_KEY = 'ql:calendar-view';
+
+function savedMode(): CalendarMode {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'list' ? 'list' : 'month';
+  } catch {
+    return 'month';
+  }
+}
+
+/** Month grid or upcoming list; the choice is in the URL (so Back returns to it) and remembered. */
+function CalendarPageInner({ today }: { today: string }) {
+  const [params, setParams] = useSearchParams();
+  const viewParam = params.get('view');
+  const mode: CalendarMode = viewParam === 'list' || viewParam === 'month' ? viewParam : savedMode();
+
+  const setMode = (m: CalendarMode) => {
+    try {
+      localStorage.setItem(MODE_KEY, m);
+    } catch {
+      /* not remembered; fine */
+    }
+    setParams(m === 'list' ? { view: 'list' } : {}, { replace: true });
+  };
+
+  return (
+    <>
+      <div className="view-toggle" role="radiogroup" aria-label="Calendar view">
+        <button role="radio" aria-checked={mode === 'month'} className={mode === 'month' ? 'is-on' : ''} onClick={() => setMode('month')}>
+          <GridIcon /> Month
+        </button>
+        <button role="radio" aria-checked={mode === 'list'} className={mode === 'list' ? 'is-on' : ''} onClick={() => setMode('list')}>
+          <ListIcon /> List
+        </button>
+      </div>
+      {mode === 'list' ? (
+        <section className="page">
+          <header className="page-header">
+            <h1>Upcoming</h1>
+            <p className="muted">Your planned tasks, due dates and repeats for the next {UPCOMING_DAYS / 7} weeks.</p>
+          </header>
+          <UpcomingList today={today} />
+        </section>
+      ) : (
+        <CalendarView today={today} />
+      )}
+    </>
+  );
 }
 
 function CalendarView({ today }: { today: string }) {

@@ -5,14 +5,13 @@ import { PRIORITIES, type Task } from '../types';
 import { QuickAdd } from './QuickAdd';
 import { TaskEditor } from './TaskEditor';
 import { TaskItem, TaskList, UpcomingItem } from './TaskItem';
-import { WeatherCard } from './WeatherCard';
 
 interface Props {
   date: string;
   today: string;
 }
 
-/** One day's quick-add, open list, weather, and missed/completed lists. */
+/** One day's quick-add, open list, and missed/completed lists. */
 export function DayTasks({ date, today }: Props) {
   const { data, isPending, error } = useDay(date);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -98,8 +97,6 @@ export function DayTasks({ date, today }: Props) {
             </>
           )}
 
-          {/* Weather sits under the day's tasks and above what's already done. */}
-          <WeatherCard date={date} today={today} />
 
           {data.missed.length > 0 && (
             <>

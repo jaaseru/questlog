@@ -19,12 +19,10 @@ flowchart TB
     db[("PostgreSQL")]
   end
 
-  met["MET Norway<br/>weather forecasts"]
   pushsvc["Push services<br/>Apple · Google · Mozilla · Microsoft"]
 
   spa -- "HTTPS: app files, JSON API,<br/>session cookie" --> server
   server -- "SQL" --> db
-  server -- "forecasts, cached" --> met
   server -- "encrypted notifications" --> pushsvc
   pushsvc -- "delivers" --> sw
   sw -- "tap opens the right page" --> spa
@@ -32,14 +30,14 @@ flowchart TB
 
 | Box | What runs there |
 | --- | --- |
-| Web app | All screens; caches server data (TanStack Query); keeps the weather opt-in and rounded location in `localStorage` on this device only |
+| Web app | All screens; caches server data (TanStack Query); remembers small per-device choices (e.g. calendar Month/List) in `localStorage` |
 | Service worker | Shows push notifications and opens the app when one is tapped |
-| Server | Static app files, the JSON API, minute jobs (roll-over, repeats, morning summary, shopping clean-up), in-memory weather cache and sign-in throttles; also the `users.js` CLI via `railway ssh` |
+| Server | Static app files, the JSON API, minute jobs (roll-over, repeats, morning summary, shopping clean-up), in-memory sign-in throttles; also the `users.js` CLI via `railway ssh` |
 | PostgreSQL | All durable data (see [Data model](data-model.md)) |
 
 - **One container** serves both the built SPA and the JSON API from the same origin, so cookies are first-party and there's no CORS.
-- **The database is the only durable state.** In-memory state (weather cache, sign-in throttles) is fine to lose on restart.
-- **Outbound calls** go only to MET Norway and the four push services.
+- **The database is the only durable state.** In-memory state (sign-in throttles) is fine to lose on restart.
+- **Outbound calls** go only to the four push services.
 
 ## Request pipeline
 
@@ -64,11 +62,10 @@ flowchart TD
   route --> shopping["/api/shopping"]
   route --> push["/api/push"]
   route --> account["/api/account"]
-  route --> weather["/api/weather"]
   route --> adminq{"/api/admin<br/>is_admin?"}
   adminq -- no --> d403["403"]
   adminq -- yes --> admin["admin routes"]
-  tasks & shopping & push & account & weather & admin --> errors["error handler<br/>zod → 400, HttpError → status,<br/>anything else → 500"]
+  tasks & shopping & push & account & admin --> errors["error handler<br/>zod → 400, HttpError → status,<br/>anything else → 500"]
 ```
 
 ## API map
@@ -81,7 +78,6 @@ flowchart TD
 | `/api/users` | signed in | `GET` people you can share with |
 | `/api/tasks` | signed in, own/shared tasks only | `GET day/:date`, `GET backlog`, `GET history`, `GET calendar`, `GET :id`, `POST`, `PATCH :id`, `POST :id/complete`, `POST :id/reopen`, `PUT/DELETE :id/repeat`, `DELETE :id` |
 | `/api/shopping` | signed in, one shared list | `GET`, `POST`, `POST :id/check`, `POST :id/uncheck`, `DELETE :id` |
-| `/api/weather` | signed in | `GET ?lat&lon` |
 | `/api/push` | signed in | `GET config`, `POST subscribe`, `POST unsubscribe`, `PATCH prefs`, `POST test` |
 | `/api/account` | signed in | `POST password`, `POST signout-others` |
 | `/api/admin` | admin | `GET/POST users`, `PATCH users/:id`, `POST users/:id/password`, `POST users/:id/signout`, `GET audit` |
@@ -101,7 +97,6 @@ flowchart TD
   app --> taskroutes["tasks/routes.ts"]
   app --> pushroutes["pushRoutes.ts"]
   app --> shopping["shopping.ts"]
-  app --> weather["weather.ts"]
 
   taskroutes --> taskrepo["tasks/repo.ts<br/>TaskRepo"]
   taskroutes --> series["series.ts<br/>SeriesRepo"]
@@ -135,7 +130,8 @@ flowchart TD
   Layout --> Adm["AdminPage (admin only)"]
 
   Day --> DayTasks["DayTasks"]
-  DayTasks --> QuickAdd & TaskItem & TaskEditor & WeatherCard
+  DayTasks --> QuickAdd & TaskItem & TaskEditor
+  Cal --> UpcomingList
   TaskEditor --> RepeatPicker & SharePicker
   QuickAdd --> SharePicker
   Acc --> NotificationSettings

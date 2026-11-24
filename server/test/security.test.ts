@@ -16,7 +16,6 @@ describe.skipIf(!databaseUrl)('security (needs TEST_DATABASE_URL)', () => {
     databaseSsl: false,
     appPassword: '',
     adminUsername: 'admin',
-    weatherUserAgent: 'questlog-test',
     sessionSecret: 's'.repeat(32),
     timezone: 'UTC',
     isProduction: false,
@@ -241,13 +240,6 @@ describe.skipIf(!databaseUrl)('security (needs TEST_DATABASE_URL)', () => {
       await asBob.get('/api/tasks/backlog').set('Origin', 'https://evil.example').expect(200);
     });
 
-    it('only serves weather to signed-in users, for valid coordinates', async () => {
-      await request(app).get('/api/weather?lat=59.91&lon=10.75').expect(401);
-      const asBob = await signIn('bob');
-      await asBob.get('/api/weather').expect(400);
-      await asBob.get('/api/weather?lat=91&lon=10').expect(400);
-      await asBob.get('/api/weather?lat=59&lon=abc').expect(400);
-    });
 
     it('marks API responses as not cacheable', async () => {
       const { headers } = await (await signIn('bob')).get('/api/tasks/backlog').expect(200);

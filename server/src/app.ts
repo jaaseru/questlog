@@ -3,7 +3,7 @@ import path from 'node:path';
 import cookieParser from 'cookie-parser';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
-import { z, ZodError } from 'zod';
+import { ZodError } from 'zod';
 import { adminRouter } from './admin.js';
 import { AuditLog } from './audit.js';
 import {
@@ -27,7 +27,6 @@ import { ShoppingRepo, shoppingRouter } from './shopping.js';
 import { TaskRepo } from './tasks/repo.js';
 import { tasksRouter } from './tasks/routes.js';
 import { UserRepo } from './users.js';
-import { WeatherService } from './weather.js';
 
 export interface AppDeps {
   db: Db;
@@ -37,12 +36,11 @@ export interface AppDeps {
   clientDir?: string;
   /** Override sign-in throttling (tests sign in far more often than people do). */
   loginLimits?: LoginLimits;
-  weather?: WeatherService;
   /** Web Push; without it, notification endpoints report that push is off. */
   push?: PushService;
 }
 
-export function createApp({ db, config, scheduler, clientDir, loginLimits, weather, push }: AppDeps) {
+export function createApp({ db, config, scheduler, clientDir, loginLimits, push }: AppDeps) {
   const app = express();
   app.set('trust proxy', 1); // Railway terminates TLS at its proxy
   app.disable('x-powered-by');
@@ -74,16 +72,6 @@ export function createApp({ db, config, scheduler, clientDir, loginLimits, weath
   app.get('/api/users', async (_req, res) => {
     // Just what's needed to pick people; who the admin is stays private.
     res.json({ users: (await users.list()).map(({ id, username, displayName }) => ({ id, username, displayName })) });
-  });
-  const weatherService = weather ?? new WeatherService(config.weatherUserAgent, config.timezone);
-  const coords = z.object({
-    lat: z.coerce.number().min(-90).max(90),
-    lon: z.coerce.number().min(-180).max(180),
-  });
-  // Coordinates are rounded to ~1 km before use and never stored.
-  app.get('/api/weather', async (req, res) => {
-    const { lat, lon } = coords.parse(req.query);
-    res.json(await weatherService.report(lat, lon));
   });
   app.get('/api/meta', (_req, res) => {
     res.json({ today: todayIn(config.timezone), timezone: config.timezone });
