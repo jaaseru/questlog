@@ -31,7 +31,6 @@ Not used on purpose: no ORM (the SQL is short and explicit), no CSS framework (o
 
 | Service | Used for | Notes |
 | --- | --- | --- |
-| [MET Norway Locationforecast 2.0](https://api.met.no/weatherapi/locationforecast/2.0/documentation) | Weather on the day pages | Data behind yr.no. Free; requires an identifying `User-Agent`, caching per `Expires`, and attribution. Called only from the server. |
 | Web Push services (Apple, Google FCM, Mozilla, Microsoft WNS) | Delivering notifications to devices | The server only sends to these hosts. |
 
 ## Repository layout
@@ -42,7 +41,7 @@ questlog/
 │   ├── public/              sw.js (service worker), manifest, icons
 │   └── src/
 │       ├── pages/           One file per route (Day, Calendar, Backlog, History, Shopping, Account, Admin, Login)
-│       ├── components/      Task list/editor, repeat & share pickers, weather card, notification settings, layout
+│       ├── components/      Task list/editor, repeat & share pickers, upcoming list, notification settings, layout
 │       ├── api.ts           Typed fetch wrapper for every /api endpoint
 │       ├── queries.ts       TanStack Query hooks
 │       └── styles.css       All styles (light/dark via CSS variables)
@@ -59,7 +58,6 @@ questlog/
 │   │   ├── admin.ts         Admin API
 │   │   ├── users.ts         Accounts, passwords, first-user bootstrap
 │   │   ├── push.ts          Web Push: subscriptions, sending, morning summary
-│   │   ├── weather.ts       MET Norway client, caching, daily summary
 │   │   ├── shopping.ts      Shared shopping list
 │   │   ├── audit.ts         Audit log
 │   │   └── cli/users.ts     Command-line account management
@@ -89,4 +87,4 @@ flowchart LR
 
 ## Configuration
 
-All configuration is environment variables on the Railway service; see the table in the [README](../README.md#deploying-to-railway). Required: `DATABASE_URL`, `SESSION_SECRET`. Usually set: `APP_TIMEZONE`. Optional: `WEATHER_USER_AGENT`, `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, and `ADMIN_USERNAME`/`APP_PASSWORD` (only for the one-time upgrade to multi-user).
+All configuration is environment variables on the Railway service; see the table in the [README](../README.md#deploying-to-railway). Required: `DATABASE_URL`, `SESSION_SECRET`. Usually set: `APP_TIMEZONE`. Optional: `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, and `ADMIN_USERNAME`/`APP_PASSWORD` (only for the one-time upgrade to multi-user).

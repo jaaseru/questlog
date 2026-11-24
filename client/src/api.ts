@@ -1,5 +1,4 @@
 import type { AdminUser, AuditEntry, Person, ShoppingItem, Task, TaskInput, TaskRepeat, Upcoming, User } from './types';
-import type { WeatherReport } from './weather';
 
 export interface NotificationPrefs {
   shared: boolean;
@@ -95,7 +94,6 @@ export const api = {
   },
   logout: () => request<{ ok: true }>('/auth/logout', json('POST')),
   meta: () => request<{ today: string; timezone: string }>('/meta'),
-  weather: (lat: number, lon: number) => request<WeatherReport>(`/weather?lat=${lat}&lon=${lon}`),
 
   day: (date: string) =>
     request<{

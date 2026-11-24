@@ -1,8 +1,10 @@
-import { Link, Navigate, useParams } from 'react-router';
+import { useCallback, useRef } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { DayTasks } from '../components/DayTasks';
 import { ChevronLeft, ChevronRight } from '../components/icons';
 import { addDays, isIsoDate, isoWeek, longDate, relativeDayName, weekdayName } from '../dates';
 import { useToday } from '../queries';
+import { useSwipeNav } from '../useSwipeNav';
 
 export function DayPage() {
   const today = useToday();
@@ -20,8 +22,23 @@ function DayView({ date, today }: { date: string; today: string }) {
   const weekday = weekdayName(date);
   const dayHref = (d: string) => (d === today ? '/' : `/day/${d}`);
 
+  // Swipe left for the next day, right for the previous one. The direction rides along in the
+  // navigation state so the new day slides in from the matching side.
+  const navigate = useNavigate();
+  const { state } = useLocation() as { state: { slide?: 'next' | 'prev' } | null };
+  const swipeArea = useRef<HTMLElement>(null);
+  const onNext = useCallback(
+    () => navigate(dayHref(addDays(date, 1)), { state: { slide: 'next' } }),
+    [date, today, navigate],
+  );
+  const onPrev = useCallback(
+    () => navigate(dayHref(addDays(date, -1)), { state: { slide: 'prev' } }),
+    [date, today, navigate],
+  );
+  useSwipeNav(swipeArea, { onNext, onPrev });
+
   return (
-    <section className="page">
+    <section ref={swipeArea} key={date} className={`page swipe-area${state?.slide ? ` slide-in-${state.slide}` : ''}`}>
       <header className="day-header">
         <Link className="icon-btn" to={dayHref(addDays(date, -1))} aria-label="Previous day">
           <ChevronLeft />

@@ -8,7 +8,6 @@ How the main things happen, step by step. See also: [Tech stack](tech-stack.md) 
 - [Repeating tasks](#repeating-tasks)
 - [Sharing a task and notifying others](#sharing-a-task-and-notifying-others)
 - [Turning on notifications](#turning-on-notifications)
-- [Weather](#weather)
 - [Shopping list](#shopping-list)
 - [Admin: resetting a password](#admin-resetting-a-password)
 
@@ -195,41 +194,6 @@ sequenceDiagram
 ```
 
 On iPhone and iPad this only works from the Home Screen app (iOS 16.4+); in a Safari tab the Account page explains how to add it.
-
-## Weather
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor U as User
-  participant A as App
-  participant S as Server
-  participant C as Weather cache (memory)
-  participant M as MET Norway
-
-  U->>A: Today page → "Use my location" (once per device)
-  A->>A: geolocation → round to 2 decimals (~1 km),<br/>remember on this device
-  A->>S: GET /api/weather?lat=59.91&lon=10.75
-  S->>C: fresh forecast for this spot?
-  alt cached and not past Expires
-    C-->>S: forecast
-  else stale or missing
-    S->>M: GET locationforecast (User-Agent, If-Modified-Since)
-    alt 200
-      M-->>S: hourly + 6-hourly time series, Expires
-    else 304
-      M-->>S: not modified, new Expires
-    else error
-      S->>S: use last good forecast if any
-    end
-    S->>C: store until Expires
-  end
-  S->>S: summarise per local day: now, min/max,<br/>rain, wind, midday symbol
-  S-->>A: {now, days[4]}
-  A->>U: Today: now + today. Next 3 days' pages: that day.
-```
-
-Coordinates are never stored on the server.
 
 ## Shopping list
 
