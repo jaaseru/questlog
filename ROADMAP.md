@@ -109,7 +109,7 @@ These give the most value for the effort, given what the app already has.
 - Admin page, account page, revocable sessions, sign-in throttling, audit log
 - Week numbers in the calendar and day header
 - Push notifications (prototype): shared-task changes and a morning summary
-- Shared shopping list with sub-items; checked-off items clear after 12 hours
+- Shared shopping list with sub-items; checked-off items clear after 12 hours; drag to reorder
 - Calendar list view of the next 8 weeks; swipe between days on phones
 - (Removed) Weather from MET Norway: in git history (pull request #9) if wanted back
 - Repeating tasks: daily/weekly/monthly/yearly, routines and chores (fixed or flexible day), repeat until, missed tracking
