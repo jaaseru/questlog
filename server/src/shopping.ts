@@ -8,6 +8,8 @@
  * - Unchecking an item unchecks its sub-items; unchecking a sub-item reopens its item.
  * - Adding a sub-item to a checked item reopens the item.
  * - Checked-off entries are deleted CHECKED_RETENTION_HOURS after being checked off.
+ * - Entries are kept in a chosen order (`position`, per parent). New entries go last;
+ *   moving one renumbers its siblings.
  */
 import { Router, type Request } from 'express';
 import type pg from 'pg';
@@ -45,7 +47,7 @@ export class ShoppingRepo {
 
   async list(): Promise<ShoppingItem[]> {
     const { rows } = await this.db.query<ShoppingItem>(
-      `SELECT ${COLUMNS} FROM shopping_items ORDER BY created_at, id`,
+      `SELECT ${COLUMNS} FROM shopping_items ORDER BY position, created_at, id`,
     );
     return rows;
   }
@@ -58,8 +60,12 @@ export class ShoppingRepo {
         // A new sub-item means the item isn't done after all.
         if (parent.checked_at) await c.query('UPDATE shopping_items SET checked_at = NULL, checked_by = NULL WHERE id = $1', [parentId]);
       }
+      // Goes last among its siblings.
       const { rows } = await c.query<ShoppingItem>(
-        `INSERT INTO shopping_items (parent_id, title, created_by) VALUES ($1, $2, $3) RETURNING ${COLUMNS}`,
+        `INSERT INTO shopping_items (parent_id, title, created_by, position)
+         VALUES ($1, $2, $3,
+           (SELECT COALESCE(max(position), 0) + 1 FROM shopping_items WHERE parent_id IS NOT DISTINCT FROM $1))
+         RETURNING ${COLUMNS}`,
         [parentId, title, userId],
       );
       return rows[0]!;
@@ -99,6 +105,36 @@ export class ShoppingRepo {
     });
   }
 
+  /**
+   * Moves an entry to just before `beforeId`, or to the end when `beforeId` is null.
+   * Both must have the same parent: items move among items, sub-items within their item.
+   */
+  async move(id: string, beforeId: string | null): Promise<void> {
+    if (beforeId === id) return;
+    await withTransaction(this.db, async (c) => {
+      const item = await this.lock(c, id);
+      // Lock the whole sibling group so two people dragging at once can't interleave.
+      const { rows } = await c.query<{ id: string }>(
+        `SELECT id FROM shopping_items WHERE parent_id IS NOT DISTINCT FROM $1
+         ORDER BY position, created_at, id FOR UPDATE`,
+        [item.parent_id],
+      );
+      const order = rows.map((r) => r.id).filter((x) => x !== id);
+      let at = order.length;
+      if (beforeId) {
+        at = order.indexOf(beforeId);
+        if (at < 0) throw new HttpError(400, 'Can only move an entry among its own list');
+      }
+      order.splice(at, 0, id);
+      await c.query(
+        `UPDATE shopping_items s SET position = o.n
+         FROM unnest($1::uuid[]) WITH ORDINALITY AS o(id, n)
+         WHERE s.id = o.id AND s.position IS DISTINCT FROM o.n`,
+        [order],
+      );
+    });
+  }
+
   /** Removes an item (and its sub-items). */
   async remove(id: string): Promise<boolean> {
     const { rowCount } = await this.db.query('DELETE FROM shopping_items WHERE id = $1', [id]);
@@ -122,6 +158,8 @@ const addSchema = z
     parentId: z.uuid().nullable().optional(),
   })
   .strict();
+
+const moveSchema = z.object({ beforeId: z.uuid().nullable() }).strict();
 
 function idParam(req: Request): string {
   const parsed = itemId.safeParse(req.params.id);
@@ -150,6 +188,12 @@ export function shoppingRouter(repo: ShoppingRepo): Router {
 
   router.post('/:id/uncheck', async (req, res) => {
     await repo.uncheck(idParam(req));
+    res.json({ ok: true });
+  });
+
+  router.post('/:id/move', async (req, res) => {
+    const { beforeId } = moveSchema.parse(req.body);
+    await repo.move(idParam(req), beforeId);
     res.json({ ok: true });
   });
 

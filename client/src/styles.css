@@ -1783,3 +1783,46 @@ code {
     animation: none;
   }
 }
+
+/* ---------- Drag to reorder ---------- */
+
+.drag-handle {
+  color: var(--muted);
+  cursor: grab;
+  /* The handle owns the gesture; the rest of the row still scrolls the page. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.is-sorting {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.shop-list.is-sorting {
+  overflow: visible;
+}
+
+.sortable.is-shifting {
+  transition: transform 160ms ease;
+}
+
+.sortable.is-dragging {
+  position: relative;
+  z-index: 2;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  cursor: grabbing;
+}
+
+.sortable.is-dragging .drag-handle {
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sortable.is-shifting {
+    transition: none;
+  }
+}

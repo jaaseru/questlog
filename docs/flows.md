@@ -221,6 +221,8 @@ stateDiagram-v2
 
 An item is only checked off when someone checks it itself, even if all its sub-items are done; it then shows "N of N checked off". The page polls every 15 seconds so other people's changes appear.
 
+**Reordering.** Dragging an entry by its handle sends `POST /api/shopping/:id/move {beforeId}` on drop (`null` = to the end). The server locks that entry's siblings, takes them in their current order, puts the entry before `beforeId` and renumbers `position`; `beforeId` must have the same parent, so items move among items and sub-items stay within their item. The app reorders its copy at once and the next refresh confirms it.
+
 ## Admin: resetting a password
 
 ```mermaid

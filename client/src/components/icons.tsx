@@ -110,3 +110,8 @@ export const PlusIcon = () => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
+export const GripIcon = () => (
+  <svg {...base}>
+    <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" strokeWidth={3} />
+  </svg>
+);

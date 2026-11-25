@@ -66,6 +66,7 @@ export const api = {
       request<ShoppingItem>('/shopping', json('POST', { title, parentId })),
     check: (id: string) => request<{ ok: true }>(`/shopping/${id}/check`, json('POST')),
     uncheck: (id: string) => request<{ ok: true }>(`/shopping/${id}/uncheck`, json('POST')),
+    move: (id: string, beforeId: string | null) => request<{ ok: true }>(`/shopping/${id}/move`, json('POST', { beforeId })),
     remove: (id: string) => request<void>(`/shopping/${id}`, json('DELETE')),
   },
 

@@ -77,7 +77,7 @@ flowchart TD
 | `/api/meta` | signed in | `GET` today's date and time zone |
 | `/api/users` | signed in | `GET` people you can share with |
 | `/api/tasks` | signed in, own/shared tasks only | `GET day/:date`, `GET backlog`, `GET history`, `GET calendar`, `GET :id`, `POST`, `PATCH :id`, `POST :id/complete`, `POST :id/reopen`, `PUT/DELETE :id/repeat`, `DELETE :id` |
-| `/api/shopping` | signed in, one shared list | `GET`, `POST`, `POST :id/check`, `POST :id/uncheck`, `DELETE :id` |
+| `/api/shopping` | signed in, one shared list | `GET`, `POST`, `POST :id/check`, `POST :id/uncheck`, `POST :id/move`, `DELETE :id` |
 | `/api/push` | signed in | `GET config`, `POST subscribe`, `POST unsubscribe`, `PATCH prefs`, `POST test` |
 | `/api/account` | signed in | `POST password`, `POST signout-others` |
 | `/api/admin` | admin | `GET/POST users`, `PATCH users/:id`, `POST users/:id/password`, `POST users/:id/signout`, `GET audit` |

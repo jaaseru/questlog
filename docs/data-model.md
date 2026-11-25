@@ -116,6 +116,7 @@ erDiagram
     uuid id PK
     uuid parent_id FK "NULL = top-level item"
     text title
+    int position "order among siblings"
     timestamptz checked_at "NULL = open"
     uuid checked_by FK
     uuid created_by FK
@@ -163,7 +164,7 @@ One row per device that turned on notifications. The endpoint must belong to a k
 Security-relevant events: sign-ins (successful, failed, blocked) and account changes (created, renamed, disabled, password reset, admin granted …), with actor, target and IP. Shown on the Admin page.
 
 ### `shopping_items`
-The single shared shopping list. `parent_id` makes an entry a sub-item (one level deep, enforced by the API). `checked_at` set = checked off; such entries are deleted 12 hours later. Deleting an item deletes its sub-items (`ON DELETE CASCADE`).
+The single shared shopping list. `parent_id` makes an entry a sub-item (one level deep, enforced by the API). `checked_at` set = checked off; such entries are deleted 12 hours later. Deleting an item deletes its sub-items (`ON DELETE CASCADE`). `position` is the order chosen by dragging, numbered separately among top-level items and within each item's sub-items; new entries go last.
 
 ### `app_settings`
 Key/value settings owned by the server; today only the generated VAPID key pair for Web Push.

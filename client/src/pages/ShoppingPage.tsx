@@ -1,11 +1,12 @@
 import { QueryError } from '../components/QueryError';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { api } from '../api';
-import { CheckIcon, PlusIcon, SubItemIcon, XIcon } from '../components/icons';
+import { CheckIcon, GripIcon, PlusIcon, SubItemIcon, XIcon } from '../components/icons';
 import { timeAgo } from '../dates';
 import { useMe, useUsers } from '../queries';
 import type { ShoppingItem } from '../types';
+import { useDragReorder } from '../useDragReorder';
 
 const KEY = ['shopping'];
 type ListData = { items: ShoppingItem[]; retentionHours: number };
@@ -23,6 +24,20 @@ function applyToggle(items: ShoppingItem[], id: string, checked: boolean, userId
     if (!checked && target.parentId === i.id) return set(i); // unchecking a sub-item reopens its item
     return i;
   });
+}
+
+/** Optimistically applies a move the way the server will: before `beforeId`, or last among its siblings. */
+function applyMove(items: ShoppingItem[], id: string, beforeId: string | null): ShoppingItem[] {
+  const moving = items.find((i) => i.id === id);
+  if (!moving) return items;
+  const rest = items.filter((i) => i.id !== id);
+  let at = beforeId ? rest.findIndex((i) => i.id === beforeId) : -1;
+  if (at < 0) {
+    const lastSibling = rest.findLastIndex((i) => i.parentId === moving.parentId);
+    at = lastSibling + 1;
+  }
+  rest.splice(at, 0, moving);
+  return rest;
 }
 
 export function ShoppingPage() {
@@ -60,6 +75,19 @@ export function ShoppingPage() {
     onSettled: settle,
   });
 
+  const move = useMutation({
+    mutationFn: ({ id, beforeId }: { id: string; beforeId: string | null }) => api.shopping.move(id, beforeId),
+    onMutate: async ({ id, beforeId }) => {
+      await qc.cancelQueries({ queryKey: KEY });
+      const previous = qc.getQueryData<ListData>(KEY);
+      if (previous) qc.setQueryData<ListData>(KEY, { ...previous, items: applyMove(previous.items, id, beforeId) });
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => ctx?.previous && qc.setQueryData(KEY, ctx.previous),
+    onSettled: settle,
+  });
+  const onMove = (id: string, beforeId: string | null) => move.mutate({ id, beforeId });
+
   const items = data?.items ?? [];
   const children = (id: string) => items.filter((i) => i.parentId === id);
   const topLevel = items.filter((i) => i.parentId === null);
@@ -87,42 +115,40 @@ export function ShoppingPage() {
       <AddForm placeholder="Add an item…" parentId={null} />
 
       <QueryError error={error} hasData={Boolean(data)} />
-      {toggle.error && <p className="form-error">{toggle.error.message}</p>}
+      {(toggle.error ?? move.error) && <p className="form-error">{(toggle.error ?? move.error)!.message}</p>}
       {isPending && <p className="muted center">Loading…</p>}
       {data && open.length === 0 && <p className="empty">{checked.length ? 'All done.' : 'The list is empty.'}</p>}
 
       {open.length > 0 && (
-        <ul className="task-list shop-list">
-          {open.map((item) => {
-            const all = children(item.id);
+        <SortableList ids={open.map((i) => i.id)} onMove={onMove} className="task-list shop-list">
+          {(item, drag) => {
+            const it = open.find((i) => i.id === item)!;
+            const all = children(it.id);
             const subs = all.filter((s) => !s.checkedAt);
             const doneCount = all.length - subs.length;
             return (
-              <li key={item.id} className="shop-group">
+              <>
                 <ShopRow
-                  item={item}
+                  item={it}
                   {...rowProps}
+                  handle={drag}
                   meta={doneCount > 0 ? `${doneCount} of ${all.length} checked off` : undefined}
-                  onAddSub={() => setAddingTo(addingTo === item.id ? null : item.id)}
+                  onAddSub={() => setAddingTo(addingTo === it.id ? null : it.id)}
                 />
-                {(subs.length > 0 || addingTo === item.id) && (
-                  <ul className="shop-subs">
-                    {subs.map((s) => (
-                      <li key={s.id}>
-                        <ShopRow item={s} {...rowProps} />
-                      </li>
-                    ))}
-                    {addingTo === item.id && (
+                {(subs.length > 0 || addingTo === it.id) && (
+                  <SortableList ids={subs.map((s) => s.id)} onMove={onMove} className="shop-subs">
+                    {(subId, subDrag) => <ShopRow item={subs.find((s) => s.id === subId)!} {...rowProps} handle={subDrag} />}
+                    {addingTo === it.id && (
                       <li className="shop-subs__add">
-                        <AddForm placeholder={`Add to ${item.title}…`} parentId={item.id} autoFocus onDone={() => setAddingTo(null)} />
+                        <AddForm placeholder={`Add to ${it.title}…`} parentId={it.id} autoFocus onDone={() => setAddingTo(null)} />
                       </li>
                     )}
-                  </ul>
+                  </SortableList>
                 )}
-              </li>
+              </>
             );
-          })}
-        </ul>
+          }}
+        </SortableList>
       )}
 
       {checked.length > 0 && (
@@ -155,8 +181,38 @@ export function ShoppingPage() {
   );
 }
 
+type HandleProps = ReturnType<ReturnType<typeof useDragReorder>['handleProps']>;
+
+/** A `<ul>` whose rows can be dragged into a new order by their handle. */
+function SortableList({
+  ids,
+  onMove,
+  className,
+  children,
+}: {
+  ids: string[];
+  onMove: (id: string, beforeId: string | null) => void;
+  className: string;
+  children: [(id: string, handle: HandleProps) => ReactNode, ReactNode?] | ((id: string, handle: HandleProps) => ReactNode);
+}) {
+  const { rowRef, rowStyle, rowClass, handleProps, dragging } = useDragReorder(ids, onMove);
+  const [renderRow, after] = typeof children === 'function' ? [children, null] : children;
+  return (
+    <ul className={`${className}${dragging ? ' is-sorting' : ''}`}>
+      {ids.map((id) => (
+        <li key={id} ref={rowRef(id)} style={rowStyle(id)} className={`shop-group sortable${rowClass(id)}`}>
+          {renderRow(id, handleProps(id))}
+        </li>
+      ))}
+      {after}
+    </ul>
+  );
+}
+
 interface RowProps {
   item: ShoppingItem;
+  /** Drag handle props, for entries that can be reordered. */
+  handle?: HandleProps;
   onToggle: (id: string, checked: boolean) => void;
   onRemove: (item: ShoppingItem) => void;
   onAddSub?: () => void;
@@ -165,7 +221,7 @@ interface RowProps {
   meta?: string;
 }
 
-function ShopRow({ item, onToggle, onRemove, onAddSub, context, meta }: RowProps) {
+function ShopRow({ item, onToggle, onRemove, onAddSub, context, meta, handle }: RowProps) {
   const done = Boolean(item.checkedAt);
   return (
     <div className={`shop-row${done ? ' is-done' : ''}`}>
@@ -195,6 +251,16 @@ function ShopRow({ item, onToggle, onRemove, onAddSub, context, meta }: RowProps
       <button className="icon-btn icon-btn--small" onClick={() => onRemove(item)} aria-label={`Remove "${item.title}"`}>
         <XIcon />
       </button>
+      {handle && (
+        <button
+          type="button"
+          className="icon-btn icon-btn--small drag-handle"
+          aria-label={`Move "${item.title}" (drag, or use the arrow keys)`}
+          {...handle}
+        >
+          <GripIcon />
+        </button>
+      )}
     </div>
   );
 }

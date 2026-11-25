@@ -143,6 +143,58 @@ describe.skipIf(!databaseUrl)('shopping list (needs TEST_DATABASE_URL)', () => {
     });
   });
 
+  describe('ordering', () => {
+    async function titles(parentId: string | null = null) {
+      const { body } = await asBob.get('/api/shopping').expect(200);
+      return (body.items as { title: string; parentId: string | null }[]).filter((i) => i.parentId === parentId).map((i) => i.title);
+    }
+    const move = (id: string, beforeId: string | null) => asAlice.post(`/api/shopping/${id}/move`).send({ beforeId });
+
+    it('keeps the order entries were added in, new ones last', async () => {
+      await add(asAlice, 'Milk');
+      await add(asBob, 'Eggs');
+      await add(asAlice, 'Bread');
+      expect(await titles()).toEqual(['Milk', 'Eggs', 'Bread']);
+    });
+
+    it('moves an item before another, or to the end, for everyone', async () => {
+      const milk = await add(asAlice, 'Milk');
+      await add(asAlice, 'Eggs');
+      const bread = await add(asAlice, 'Bread');
+      await move(bread.id, milk.id).expect(200);
+      expect(await titles()).toEqual(['Bread', 'Milk', 'Eggs']);
+      await move(bread.id, null).expect(200);
+      expect(await titles()).toEqual(['Milk', 'Eggs', 'Bread']);
+      await move(milk.id, bread.id).expect(200);
+      expect(await titles()).toEqual(['Eggs', 'Milk', 'Bread']);
+      await move(milk.id, milk.id).expect(200);
+      expect(await titles()).toEqual(['Eggs', 'Milk', 'Bread']);
+      // Added after moving: still last.
+      await add(asBob, 'Cheese');
+      expect(await titles()).toEqual(['Eggs', 'Milk', 'Bread', 'Cheese']);
+    });
+
+    it('moves sub-items within their item only', async () => {
+      const tacos = await add(asAlice, 'Taco night');
+      const tortillas = await add(asAlice, 'Tortillas', tacos.id);
+      const salsa = await add(asAlice, 'Salsa', tacos.id);
+      const milk = await add(asAlice, 'Milk');
+      await move(salsa.id, tortillas.id).expect(200);
+      expect(await titles(tacos.id)).toEqual(['Salsa', 'Tortillas']);
+      expect(await titles()).toEqual(['Taco night', 'Milk']);
+      await move(salsa.id, milk.id).expect(400);
+      await move(milk.id, salsa.id).expect(400);
+    });
+
+    it('validates input', async () => {
+      const milk = await add(asAlice, 'Milk');
+      await move(milk.id, 'nope').expect(400);
+      await asAlice.post(`/api/shopping/${milk.id}/move`).send({}).expect(400);
+      await move('00000000-0000-4000-8000-000000000000', null).expect(404);
+      await request(app).post(`/api/shopping/${milk.id}/move`).send({ beforeId: null }).expect(401);
+    });
+  });
+
   describe('clearing checked-off items', () => {
     it('deletes entries 12 hours after they were checked off, and nothing else', async () => {
       const milk = await add(asAlice, 'Milk');
